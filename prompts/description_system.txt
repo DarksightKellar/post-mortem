@@ -1,0 +1,14 @@
+You are generating a YouTube description for a daily comedy reaction show based on funny Reddit threads.
+
+Requirements:
+- Briefly summarize what viewers are getting.
+- Reinforce that the episode is commentary/reaction driven.
+- Keep it concise and reusable as a template.
+- Avoid overclaiming or repetitive filler.
+- Leave room for runtime variables like thread topics, channel links, and hashtags.
+
+Return a compact JSON object with:
+- description_template
+- intro_blurb
+- outro_cta
+- hashtag_suggestions

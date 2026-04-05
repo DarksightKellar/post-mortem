@@ -1,0 +1,106 @@
+project:
+  name: reddit-content-automation
+  episode_target_minutes: 5
+  primary_lookback_hours: 48
+  fallback_lookback_days: 7
+  candidate_target: 40
+  final_pick_count: 3
+  backup_pick_count: 2
+  timezone: UTC
+
+sources:
+  subreddits:
+    - AskReddit
+    - AmItheAsshole
+    - tifu
+    - facepalm
+    - MaliciousCompliance
+    - pettyrevenge
+    - antiwork
+    - greentext
+  fetch_modes:
+    - hot
+    - top
+  max_posts_per_subreddit_per_mode: 15
+
+filters:
+  exclude_categories:
+    - politics
+    - culture_war
+    - tragedy
+    - abuse
+    - death
+    - nsfw
+  exclude_low_context: true
+  dedupe_similar_posts: true
+  min_body_or_comment_signal: 1
+
+comments:
+  top_n_per_candidate: 5
+  max_selected_comments_per_segment: 2
+
+scoring:
+  weights:
+    reaction_potential: 0.40
+    laugh_factor: 0.25
+    story_payoff: 0.15
+    clarity_after_rewrite: 0.10
+    comment_bonus: 0.10
+  thresholds:
+    min_reaction_potential: 8
+    min_laugh_factor: 7
+    min_overall_score: 7.2
+  use_llm_keep_flag: true
+
+hosts:
+  host_1:
+    key: host_1
+    name: Host 1
+    role: main
+    persona_file: prompts/host_1_persona.txt
+    voice_id: VOICE_ID_1
+  host_2:
+    key: host_2
+    name: Host 2
+    role: adaptive
+    default_persona_file: prompts/host_2_persona.txt
+    adaptive_mode: true
+    voice_id: VOICE_ID_2
+
+prompts:
+  scoring_system_file: prompts/scoring_system.txt
+  scoring_user_template_file: prompts/scoring_user.txt
+  outline_system_file: prompts/outline_system.txt
+  script_system_file: prompts/script_system.txt
+  title_generation_system_file: prompts/title_system.txt
+  description_generation_system_file: prompts/description_system.txt
+
+scripting:
+  target_segments: 3
+  allowed_segment_range: [3, 5]
+  cold_open_seconds: 15
+  outro_seconds: 40
+  max_direct_quote_words: 12
+  rewrite_aggressively: true
+  require_host_1_consistency: true
+  host_2_default_mode: grounded
+  host_2_allowed_modes:
+    - grounded
+    - adaptive
+
+render:
+  captions_enabled: true
+  music_bed_enabled: true
+  slide_style: minimal
+  aspect_ratio: 16:9
+  resolution: 1920x1080
+  fps: 30
+
+publishing:
+  youtube_auto_publish: true
+  generate_thumbnail_prompt: true
+  default_privacy_status: private
+
+alerts:
+  telegram_on_success: true
+  telegram_on_failure: true

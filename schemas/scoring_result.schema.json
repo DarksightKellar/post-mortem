@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/scoring_result.schema.json",
+  "title": "ScoringResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "keep",
+    "reject_reason",
+    "reaction_potential",
+    "laugh_factor",
+    "story_payoff",
+    "clarity_after_rewrite",
+    "comment_bonus",
+    "one_line_summary",
+    "host_angle",
+    "best_comment_ids",
+    "notes"
+  ],
+  "properties": {
+    "keep": {
+      "type": "boolean"
+    },
+    "reject_reason": {
+      "type": "string"
+    },
+    "reaction_potential": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "laugh_factor": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "story_payoff": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "clarity_after_rewrite": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "comment_bonus": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "one_line_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "host_angle": {
+      "type": "string",
+      "minLength": 1
+    },
+    "best_comment_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

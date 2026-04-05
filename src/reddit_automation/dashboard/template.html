@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reddit Content Automation — Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f1117;
+            color: #e0e0e0;
+            padding: 2rem;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #fff; }
+        h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: #aaa; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: #1a1d27;
+            border-radius: 8px;
+            padding: 1.25rem;
+            border: 1px solid #2a2d3a;
+        }
+        .card .value { font-size: 2rem; font-weight: 700; color: #7c6ff7; }
+        .card .label { font-size: 0.85rem; color: #888; margin-top: 0.25rem; }
+        .success { color: #4ade80 !important; }
+        .warning { color: #facc15 !important; }
+        .danger { color: #f87171 !important; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #2a2d3a;
+        }
+        th { color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        td { font-size: 0.9rem; }
+        .status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-badge.success { background: #166534; color: #86efac; }
+        .status-badge.failure { background: #991b1b; color: #fca5a5; }
+        .status-badge.pending { background: #854d0e; color: #fde68a; }
+        .section { margin-bottom: 2rem; }
+        .controls { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+        button {
+            background: #7c6ff7;
+            color: #fff;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        button:hover { background: #6959e0; }
+        button.danger { background: #dc2626; }
+        button.danger:hover { background: #b91c1c; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        pre.config {
+            background: #1a1d27;
+            border: 1px solid #2a2d3a;
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.8rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .refresh-note { font-size: 0.75rem; color: #555; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <h1>📊 Reddit Content Automation Dashboard</h1>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="section">
+        <h2>Recent Runs</h2>
+        <table id="runs-table">
+            <thead>
+                <tr><th>Date</th><th>Stage</th><th>Status</th><th>Message</th></tr>
+            </thead>
+            <tbody id="runs-body"></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Cron Job</h2>
+        <div class="controls">
+            <button id="cron-toggle" onclick="toggleCron()"></button>
+            <button onclick="runNow()">Run Now</button>
+        </div>
+        <p class="refresh-note" id="cron-status"></p>
+    </div>
+
+    <div class="section">
+        <h2>Configuration</h2>
+        <pre class=config id="config-display">Loading…</pre>
+    </div>
+
+    <script>
+        const API = window.location.pathname.replace(/dashboard\/?$/, '') + 'api';
+
+        async function loadDashboard() {
+            try {
+                const [stats, runs, cron, config] = await Promise.all([
+                    fetch(API + '/stats').then(r => r.json()),
+                    fetch(API + '/runs').then(r => r.json()),
+                    fetch(API + '/cron').then(r => r.json()),
+                    fetch(API + '/config').then(r => r.json()),
+                ]);
+
+                // Stats cards
+                const statsEl = document.getElementById('stats');
+                statsEl.innerHTML = [
+                    { value: stats.total_runs, label: 'Total Runs' },
+                    { value: stats.success_rate + '%', label: 'Success Rate', cls: stats.success_rate >= 90 ? 'success' : 'warning' },
+                    { value: stats.last_7_days, label: 'Runs (7 Days)' },
+                    { value: stats.avg_score ?? '—', label: 'Avg Score' },
+                ].map(s => `<div class="card"><div class="value ${s.cls || ''}">${s.value}</div><div class="label">${s.label}</div></div>`).join('');
+
+                // Runs table
+                document.getElementById('runs-body').innerHTML = runs.map(r =>
+                    `<tr>
+                        <td>${r.run_date}</td>
+                        <td>${r.stage}</td>
+                        <td><span class="status-badge ${r.status}">${r.status}</span></td>
+                        <td>${r.message.substring(0, 80)}</td>
+                    </tr>`
+                ).join('');
+
+                // Cron
+                const btn = document.getElementById('cron-toggle');
+                btn.textContent = cron.enabled ? '⏸ Pause Cron' : '▶ Resume Cron';
+                btn.className = cron.enabled ? 'danger' : '';
+                document.getElementById('cron-status').textContent =
+                    cron.enabled ? `Active — next run: ${cron.next_run_at || 'unknown'}` : 'Paused';
+
+                // Config
+                document.getElementById('config-display').textContent = JSON.stringify(config, null, 2);
+            } catch (e) {
+                console.error('Dashboard load failed:', e);
+            }
+        }
+
+        async function toggleCron() {
+            try {
+                await fetch(API + '/cron/toggle', { method: 'POST' });
+                loadDashboard();
+            } catch (e) { alert('Failed to toggle cron: ' + e.message); }
+        }
+
+        async function runNow() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Running…';
+            try {
+                await fetch(API + '/cron/run', { method: 'POST' });
+                alert('Pipeline triggered! Check Telegram for results.');
+            } catch (e) { alert('Failed: ' + e.message); }
+            finally { btn.disabled = false; btn.textContent = 'Run Now'; }
+        }
+
+        let consecutiveFailures = 0;
+        const MAX_FAILURES = 5;
+
+        async function loadDashboardSafe() {
+            try {
+                await loadDashboard();
+                consecutiveFailures = 0;
+            } catch (e) {
+                consecutiveFailures++;
+                console.error(`Dashboard refresh failed (${consecutiveFailures}/${MAX_FAILURES}):`, e.message);
+                if (consecutiveFailures >= MAX_FAILURES) {
+                    clearInterval(refreshTimer);
+                    console.warn('Auto-refresh disabled after repeated failures');
+                }
+            }
+        }
+
+        loadDashboardSafe();
+        const refreshTimer = setInterval(loadDashboardSafe, 30000);
+    </script>
+</body>
+</html>

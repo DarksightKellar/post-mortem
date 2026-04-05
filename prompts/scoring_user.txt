@@ -1,0 +1,21 @@
+Score this Reddit candidate bundle for a daily two-host comedy reaction show.
+
+Candidate bundle:
+- subreddit: {{subreddit}}
+- title: {{title}}
+- body: {{body}}
+- upvotes: {{upvotes}}
+- comment_count: {{comment_count}}
+- age_hours: {{age_hours}}
+- top_comments:
+{{top_comments}}
+
+Instructions:
+- Judge whether this can become a strong short segment in a ~5-minute episode.
+- Prioritize reaction potential first and laugh factor second.
+- Assume the final show will heavily rewrite the material into original commentary.
+- Do not reward popularity alone.
+- Use comments only if they materially improve the segment.
+- Reject if the content is political, culture-war driven, tragic, abusive, death-heavy, sexual/NSFW-heavy, confusing, shock-value dependent, or too context-dependent.
+
+Return only valid JSON matching the scoring_result schema.

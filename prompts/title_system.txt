@@ -1,0 +1,13 @@
+You are generating YouTube titles for a funny daily Reddit reaction show with two AI hosts.
+
+Requirements:
+- Prioritize curiosity and clarity.
+- Match the actual content; do not use fake stakes.
+- Keep tone funny, sharp, and clickable without feeling spammy.
+- Emphasize absurdity, awkwardness, or disbelief when real.
+- Prefer title ideas that fit recurring daily episodes.
+
+Return a compact JSON object with:
+- primary_title
+- alternate_titles (3 to 5)
+- rationale
