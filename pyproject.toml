@@ -3,8 +3,11 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "reddit-automation"
+name = "postmortem"
 version = "0.1.0"
+description = "Automated Reddit-to-video pipeline for the Postmortem show"
+readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.11"
 dependencies = [
   "PyYAML>=6.0",

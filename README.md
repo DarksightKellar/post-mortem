@@ -1,6 +1,6 @@
-# Reddit Content Automation
+# Postmortem
 
-Automated daily pipeline that turns funny Reddit threads into ~5-minute podcast-style YouTube videos with AI hosts.
+Postmortem is an automated daily pipeline that turns funny Reddit threads into ~5-minute podcast-style YouTube videos with AI hosts.
 
 ## What it does
 
@@ -29,7 +29,7 @@ Two AI hosts react to each thread in a recurring show format — witty banter, n
 Create a virtual environment (required on Debian/Ubuntu — systems with PEP 668 block system-wide pip installs):
 
 ```bash
-cd reddit-content-automation
+cd post-mortem
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
@@ -110,7 +110,7 @@ All dependencies are managed via `pyproject.toml`. Install with `pip install -e 
 ## Architecture
 
 ```
-reddit-content-automation/
+post-mortem/
 ├── src/reddit_automation/
 │   ├── pipeline/       # Pipeline stages: fetch, filter, score, select, outline, script, voice, visuals, render, publish, notify
 │   ├── clients/        # External service clients: Reddit, LLM, TTS, YouTube, Fal.ai
