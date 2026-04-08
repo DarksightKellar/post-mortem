@@ -1,3 +1,0 @@
-PyYAML>=6.0
-praw>=7.7.1
-jsonschema>=4.23.0

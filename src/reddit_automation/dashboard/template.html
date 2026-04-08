@@ -45,16 +45,30 @@
         td { font-size: 0.9rem; }
         .status-badge {
             display: inline-block;
-            padding: 0.2rem 0.6rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
             font-weight: 600;
         }
-        .status-badge.success { background: #166534; color: #86efac; }
-        .status-badge.failure { background: #991b1b; color: #fca5a5; }
-        .status-badge.pending { background: #854d0e; color: #fde68a; }
+        .status-badge.running {
+            background: #7c6ff720;
+            color: #7c6ff7;
+            border: 1px solid #7c6ff740;
+        }
+        .status-badge.completed {
+            background: #166534;
+            color: #86efac;
+        }
+        .status-badge.failed {
+            background: #991b1b;
+            color: #fca5a5;
+        }
+        .status-badge.pending {
+            background: #2a2d3a;
+            color: #555;
+        }
         .section { margin-bottom: 2rem; }
-        .controls { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
+        .controls { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; }
         button {
             background: #7c6ff7;
             color: #fff;
@@ -68,23 +82,161 @@
         button.danger { background: #dc2626; }
         button.danger:hover { background: #b91c1c; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        pre.config {
+        .refresh-note { font-size: 0.75rem; color: #555; margin-top: 0.5rem; }
+
+        /* Progress */
+        #progress-section {
+            display: none;
+            background: #1a1d27;
+            border: 1px solid #2a2d3a;
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        #progress-section.visible { display: block; }
+        .progress-bar-track {
+            background: #2a2d3a;
+            border-radius: 4px;
+            height: 8px;
+            margin: 0.75rem 0;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background: #7c6ff7;
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        .progress-stages {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .stage-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            background: #0f1117;
+            border: 1px solid #2a2d3a;
+        }
+        .stage-chip .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .stage-chip .dot.pending { background: #555; }
+        .stage-chip .dot.running { background: #7c6ff7; animation: pulse 1s ease-in-out infinite; }
+        .stage-chip .dot.completed { background: #4ade80; }
+        .stage-chip .dot.failed { background: #f87171; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 #7c6ff780; }
+            50% { opacity: 0.7; box-shadow: 0 0 0 6px #7c6ff700; }
+        }
+        .progress-message {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-top: 0.5rem;
+        }
+        .progress-message .time-elapsed {
+            color: #888;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+
+        /* Config editor */
+        .config-editor-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        .config-editor-wrapper .editor-body {
+            flex: 1;
             background: #1a1d27;
             border: 1px solid #2a2d3a;
             border-radius: 8px;
             padding: 1rem;
-            font-size: 0.8rem;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
+            max-height: 500px;
+            overflow-y: auto;
         }
-        .refresh-note { font-size: 0.75rem; color: #555; margin-top: 0.5rem; }
+        .config-editor-wrapper .editor-actions {
+            flex-shrink: 0;
+            padding-top: 0.5rem;
+        }
+        .config-section details {
+            padding: 0.25rem 0 0.25rem 0.75rem;
+            border-left: 2px solid #2a2d3a;
+            margin: 0.25rem 0 0.25rem 0.5rem;
+        }
+        .config-section summary {
+            color: #7c6ff7;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0.2rem 0;
+            list-style: none;
+        }
+        .config-section summary::-webkit-details-marker { display: none; }
+        .config-section summary::before {
+            content: '▸ ';
+            display: inline-block;
+            transition: transform 0.15s;
+        }
+        .config-section details[open] > summary::before { content: '▾ '; }
+        .config-row {
+            display: flex;
+            align-items: center;
+            padding: 0.25rem 0;
+            gap: 0.5rem;
+            min-height: 1.8rem;
+        }
+        .config-row label {
+            flex: 0 0 170px;
+            font-size: 0.78rem;
+            color: #aaa;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        .config-row input[type="text"],
+        .config-row input[type="number"] {
+            flex: 1;
+            background: #0f1117;
+            border: 1px solid #2a2d3a;
+            border-radius: 4px;
+            color: #e0e0e0;
+            padding: 0.25rem 0.4rem;
+            font-size: 0.78rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        .config-row input:focus {
+            outline: none;
+            border-color: #7c6ff7;
+        }
+        .save-status {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            min-height: 1.25rem;
+        }
+        .save-status.ok { color: #4ade80; }
+        .save-status.error { color: #f87171; }
     </style>
 </head>
 <body>
     <h1>📊 Reddit Content Automation Dashboard</h1>
 
     <div class="stats" id="stats"></div>
+
+    <div id="progress-section">
+        <h2 id="progress-title">Pipeline Running</h2>
+        <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-message" id="progress-message"></div>
+        <div class="progress-stages" id="progress-stages"></div>
+    </div>
 
     <div class="section">
         <h2>Recent Runs</h2>
@@ -100,18 +252,185 @@
         <h2>Cron Job</h2>
         <div class="controls">
             <button id="cron-toggle" onclick="toggleCron()"></button>
-            <button onclick="runNow()">Run Now</button>
+            <button id="run-now-btn" onclick="runNow()">Run Now</button>
         </div>
         <p class="refresh-note" id="cron-status"></p>
     </div>
 
     <div class="section">
         <h2>Configuration</h2>
-        <pre class=config id="config-display">Loading…</pre>
+        <div class="config-editor-wrapper">
+            <div class="editor-body">
+                <div class="config-section" id="config-editor"></div>
+            </div>
+            <div class="editor-actions">
+                <button onclick="saveConfig()" id="save-btn">Save</button>
+                <div class="save-status" id="save-status"></div>
+            </div>
+        </div>
     </div>
 
     <script>
         const API = window.location.pathname.replace(/dashboard\/?$/, '') + 'api';
+        const STAGES = ['fetch', 'filter', 'store', 'score', 'select',
+                        'outline', 'script', 'voice', 'visuals', 'render', 'publish'];
+        let configData = null;
+        let runStartTime = null;
+        let elapsedTimer = null;
+        let consecutiveFailures = 0;
+        const MAX_FAILURES = 5;
+
+        // -- Config editor --
+
+        function renderConfigEditor(obj) {
+            let html = '<div class="config-section">';
+            for (const [key, value] of Object.entries(obj)) {
+                if (typeof value === 'object' && value !== null) {
+                    if (Array.isArray(value)) {
+                        const escaped = JSON.stringify(value).replace(/"/g, '&quot;');
+                        html += `<div class="config-row">
+                            <label>${key}</label>
+                            <input type="text" data-path="${key}" 
+                                   value="${escaped}" 
+                                   title="JSON array — edit carefully" />
+                        </div>`;
+                    } else {
+                        html += `<details open>
+                            <summary>${key}</summary>
+                            <div class="config-section">${buildEditorRows(value, key)}</div>
+                        </details>`;
+                    }
+                } else {
+                    const escaped = String(value).replace(/"/g, '&quot;');
+                    if (typeof value === 'boolean') {
+                        html += `<div class="config-row">
+                            <label>${key}</label>
+                            <input type="checkbox" data-path="${key}" data-type="bool" ${value ? 'checked' : ''} />
+                        </div>`;
+                    } else if (typeof value === 'number') {
+                        html += `<div class="config-row">
+                            <label>${key}</label>
+                            <input type="number" data-path="${key}" data-type="number" value="${escaped}" step="any" />
+                        </div>`;
+                    } else {
+                        html += `<div class="config-row">
+                            <label>${key}</label>
+                            <input type="text" data-path="${key}" value="${escaped}" />
+                        </div>`;
+                    }
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function buildEditorRows(obj, parentPath) {
+            let html = '';
+            for (const [key, value] of Object.entries(obj)) {
+                const fullPath = parentPath ? `${parentPath}.${key}` : key;
+                if (typeof value === 'object' && value !== null) {
+                    if (Array.isArray(value)) {
+                        const escaped = JSON.stringify(value).replace(/"/g, '&quot;');
+                        html += `<div class="config-row">
+                            <label>${key}</label>
+                            <input type="text" data-path="${fullPath}" 
+                                   value="${escaped}" />
+                        </div>`;
+                    } else {
+                        const nested = buildEditorRows(value, fullPath);
+                        html += `<details open>
+                            <summary>${key}</summary>
+                            <div class="config-section">${nested}</div>
+                        </details>`;
+                    }
+                } else {
+                    const escaped = String(value).replace(/"/g, '&quot;');
+                    if (typeof value === 'boolean') {
+                        html += `<div class="config-row">
+                            <label>${key}</label>
+                            <input type="checkbox" data-path="${fullPath}" data-type="bool" ${value ? 'checked' : ''} />
+                        </div>`;
+                    } else if (typeof value === 'number') {
+                        html += `<div class="config-row">
+                            <label>${key}</label>
+                            <input type="number" data-path="${fullPath}" data-type="number" value="${escaped}" step="any" />
+                        </div>`;
+                    } else {
+                        html += `<div class="config-row">
+                            <label>${key}</label>
+                            <input type="text" data-path="${fullPath}" value="${escaped}" />
+                        </div>`;
+                    }
+                }
+            }
+            return html;
+        }
+
+        function parseConfigValues() {
+            const inputs = document.querySelectorAll('#config-editor [data-path]');
+            // Build a flat dict keyed by full dotted path
+            const flat = {};
+            for (const input of inputs) {
+                const path = input.dataset.path;
+                const raw = input.dataset.type;
+                if (raw === 'bool') {
+                    flat[path] = input.checked;
+                } else if (raw === 'number') {
+                    flat[path] = parseFloat(input.value);
+                } else {
+                    // Try JSON array first, fall back to string
+                    let v = input.value;
+                    if (v.startsWith('[') || v.startsWith('{')) {
+                        try { v = JSON.parse(v); } catch(e) { /* keep as string */ }
+                    }
+                    flat[path] = v;
+                }
+            }
+            // Expand dotted paths into nested dict
+            const result = {};
+            for (const [path, val] of Object.entries(flat)) {
+                const parts = path.split('.');
+                let obj = result;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    if (!(parts[i] in obj)) obj[parts[i]] = {};
+                    obj = obj[parts[i]];
+                }
+                obj[parts[parts.length - 1]] = val;
+            }
+            return result;
+        }
+
+        async function saveConfig() {
+            const btn = document.getElementById('save-btn');
+            const status = document.getElementById('save-status');
+            btn.disabled = true;
+            status.textContent = 'Saving…';
+            status.className = 'save-status';
+            try {
+                const changes = parseConfigValues();
+                const resp = await fetch(API + '/config/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(changes),
+                });
+                const result = await resp.json();
+                if (result.error) {
+                    status.textContent = 'Error: ' + result.error;
+                    status.className = 'save-status error';
+                } else {
+                    status.textContent = 'Saved ✓';
+                    status.className = 'save-status ok';
+                    // Reload full dashboard to pick up changes
+                    setTimeout(loadDashboard, 1500);
+                }
+            } catch (e) {
+                status.textContent = 'Save failed: ' + e.message;
+                status.className = 'save-status error';
+            }
+            btn.disabled = false;
+        }
+
+        // -- Main dashboard --
 
         async function loadDashboard() {
             try {
@@ -132,14 +451,14 @@
                 ].map(s => `<div class="card"><div class="value ${s.cls || ''}">${s.value}</div><div class="label">${s.label}</div></div>`).join('');
 
                 // Runs table
-                document.getElementById('runs-body').innerHTML = runs.map(r =>
+                document.getElementById('runs-body').innerHTML = runs.length > 0 ? runs.map(r =>
                     `<tr>
-                        <td>${r.run_date}</td>
-                        <td>${r.stage}</td>
-                        <td><span class="status-badge ${r.status}">${r.status}</span></td>
-                        <td>${r.message.substring(0, 80)}</td>
+                        <td>${r.run_date ?? '—'}</td>
+                        <td>${r.stage ?? '—'}</td>
+                        <td><span class="status-badge ${r.status ?? 'pending'}">${r.status ?? '—'}</span></td>
+                        <td>${(r.message || '').substring(0, 80)}</td>
                     </tr>`
-                ).join('');
+                ).join('') : '<tr><td colspan="4" style="color:#555;text-align:center;padding:2rem;">No runs yet</td></tr>';
 
                 // Cron
                 const btn = document.getElementById('cron-toggle');
@@ -149,36 +468,14 @@
                     cron.enabled ? `Active — next run: ${cron.next_run_at || 'unknown'}` : 'Paused';
 
                 // Config
-                document.getElementById('config-display').textContent = JSON.stringify(config, null, 2);
-            } catch (e) {
-                console.error('Dashboard load failed:', e);
-            }
-        }
+                if (config && !config.error) {
+                    configData = config;
+                    document.getElementById('config-editor').innerHTML = renderConfigEditor(config);
+                } else {
+                    document.getElementById('config-editor').innerHTML =
+                        `<p style="color:#f87171;padding:1rem;">${config.error || 'Config not available'}</p>`;
+                }
 
-        async function toggleCron() {
-            try {
-                await fetch(API + '/cron/toggle', { method: 'POST' });
-                loadDashboard();
-            } catch (e) { alert('Failed to toggle cron: ' + e.message); }
-        }
-
-        async function runNow() {
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = 'Running…';
-            try {
-                await fetch(API + '/cron/run', { method: 'POST' });
-                alert('Pipeline triggered! Check Telegram for results.');
-            } catch (e) { alert('Failed: ' + e.message); }
-            finally { btn.disabled = false; btn.textContent = 'Run Now'; }
-        }
-
-        let consecutiveFailures = 0;
-        const MAX_FAILURES = 5;
-
-        async function loadDashboardSafe() {
-            try {
-                await loadDashboard();
                 consecutiveFailures = 0;
             } catch (e) {
                 consecutiveFailures++;
@@ -190,8 +487,136 @@
             }
         }
 
-        loadDashboardSafe();
-        const refreshTimer = setInterval(loadDashboardSafe, 30000);
+        // -- Progress polling --
+
+        async function pollRunStatus() {
+            try {
+                const state = await fetch(API + '/run/status').then(r => r.json());
+                updateProgressUI(state);
+            } catch (e) {
+                /* silent */
+            }
+        }
+
+        function updateProgressUI(state) {
+            const section = document.getElementById('progress-section');
+            const fill = document.getElementById('progress-fill');
+            const message = document.getElementById('progress-message');
+            const title = document.getElementById('progress-title');
+            const stagesEl = document.getElementById('progress-stages');
+            const runBtn = document.getElementById('run-now-btn');
+
+            if (state.status === 'idle' || !state.status) {
+                section.classList.remove('visible');
+                runBtn.disabled = false;
+                runBtn.textContent = 'Run Now';
+                if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+                return;
+            }
+
+            section.classList.add('visible');
+            runBtn.disabled = true;
+            runBtn.textContent = 'Running…';
+
+            const total = state.total_stages || STAGES.length;
+            const idx = state.stage_index ?? 0;
+            const pct = total > 0 ? Math.round(((idx + (state.status === 'completed' ? 1 : 0)) / total) * 100) : 0;
+            fill.style.width = pct + '%';
+
+            if (state.status === 'running') {
+                if (state.started_at && !runStartTime) runStartTime = state.started_at;
+                if (!elapsedTimer) elapsedTimer = setInterval(updateElapsed, 1000);
+            }
+
+            let msgText = state.message || '';
+            if (runStartTime) {
+                const elapsed = Math.floor((Date.now() / 1000) - runStartTime);
+                msgText += `<span class="time-elapsed">(${Math.floor(elapsed/60)}m ${elapsed%60}s)</span>`;
+            }
+            message.innerHTML = msgText;
+
+            if (state.status === 'completed' || state.status === 'idle') {
+                title.textContent = state.status === 'completed' ? 'Pipeline Completed ✓' : 'Pipeline Finished';
+                fill.style.background = state.status === 'completed' ? '#4ade80' : '#facc15';
+                runBtn.disabled = false;
+                runBtn.textContent = 'Run Now';
+                if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+                runStartTime = null;
+                setTimeout(loadDashboard, 2000);
+            } else if (state.status === 'failed') {
+                title.textContent = 'Pipeline Failed ✗';
+                title.classList.add('danger');
+                fill.style.background = '#f87171';
+                runBtn.disabled = false;
+                runBtn.textContent = 'Run Now';
+                if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+                runStartTime = null;
+            } else {
+                title.textContent = 'Pipeline Running';
+                title.classList.remove('danger');
+                fill.style.background = '#7c6ff7';
+            }
+
+            const stages = state.stages || {};
+            stagesEl.innerHTML = STAGES.map(s => {
+                const st = stages[s]?.status || 'pending';
+                return `<div class="stage-chip"><span class="dot ${st}"></span><span>${s}</span></div>`;
+            }).join('');
+        }
+
+        function updateElapsed() {
+            const msgEl = document.getElementById('progress-message');
+            if (!runStartTime || !msgEl) return;
+            const elapsed = Math.floor((Date.now() / 1000) - runStartTime);
+            // Update the .time-elapsed span
+            const timeSpan = msgEl.querySelector('.time-elapsed');
+            if (timeSpan) timeSpan.textContent = `(${Math.floor(elapsed/60)}m ${elapsed%60}s)`;
+        }
+
+        // -- Actions --
+
+        async function toggleCron() {
+            try {
+                await fetch(API + '/cron/toggle', { method: 'POST' });
+                loadDashboard();
+            } catch (e) { alert('Failed to toggle cron: ' + e.message); }
+        }
+
+        async function runNow() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Starting…';
+            try {
+                const resp = await fetch(API + '/cron/run', { method: 'POST' });
+                const data = await resp.json();
+                if (data.error) {
+                    alert('Failed: ' + data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Run Now';
+                    return;
+                }
+                runStartTime = null;
+                pollRunStatus();
+                runInterval = setInterval(() => {
+                    pollRunStatus().then(state => {
+                        if (state.status === 'completed' || state.status === 'failed' || state.status === 'idle') {
+                            clearInterval(runInterval);
+                            runInterval = null;
+                        }
+                    });
+                }, 2000);
+            } catch (e) {
+                alert('Failed: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = 'Run Now';
+            }
+        }
+
+        // -- Init --
+
+        loadDashboard();
+        const refreshTimer = setInterval(loadDashboard, 30000);
+        setInterval(pollRunStatus, 2000);
     </script>
 </body>
 </html>
