@@ -101,6 +101,8 @@ def test_full_pipeline_fetch_through_publish(tmp_path, monkeypatch):
     config = _load_config()
     config["reddit_test_data"] = {"submissions": submissions}
     config["project"]["episode_date"] = "2026-04-03"
+    config["alerts"]["telegram_bot_token"] = "test-token"
+    config["alerts"]["telegram_chat_id"] = "test-chat"
 
     # --- Stage 1: Fetch ---
     raw = fetch_candidates(config)
@@ -158,15 +160,26 @@ def test_full_pipeline_fetch_through_publish(tmp_path, monkeypatch):
     assert "cold_open" in episode_script
     assert "outro" in episode_script
 
-    # --- Stage 8: Voice (stub stitching to return a real temp path) ---
+    # --- Stage 8: Voice (stub TTS generation + stitching) ---
+    tts_calls = []
+
+    def stub_tts_generate(self, speaker_key, text):
+        tts_calls.append((speaker_key, text))
+        return str(tmp_path / f"{len(tts_calls):04d}-{speaker_key}.mp3")
+
     with patch(
-        "reddit_automation.pipeline.voice.stitch_audio_clips",
-        return_value=str(tmp_path / "final_audio.mp3")
-    ) as mock_stitch:
-        rendered_audio_path = generate_episode_audio(episode_script, config)
+        "reddit_automation.clients.tts_client.TTSClient.generate",
+        stub_tts_generate,
+    ):
+        with patch(
+            "reddit_automation.pipeline.voice.stitch_audio_clips",
+            return_value=str(tmp_path / "final_audio.mp3")
+        ) as mock_stitch:
+            rendered_audio_path = generate_episode_audio(episode_script, config)
 
     assert rendered_audio_path == str(tmp_path / "final_audio.mp3")
     assert mock_stitch.call_count == 1
+    assert tts_calls, "voice stage should invoke TTS generation"
 
     # --- Stage 9: Visuals ---
     visual_plan = build_visual_plan(outline, config)
@@ -194,14 +207,38 @@ def test_full_pipeline_fetch_through_publish(tmp_path, monkeypatch):
     from reddit_automation.clients import youtube_client
     with patch.object(
         youtube_client.YouTubeClient, "upload",
-        return_value={"upload_status": "success", "video_id": "abc123"}
+        return_value={
+            "video_id": "abc123",
+            "url": "https://www.youtube.com/watch?v=abc123",
+            "status": "uploaded",
+            "privacy_status": "private",
+        }
     ):
         publish_result = publish_episode(render_result, {"title": episode_script["title"]}, config)
-    assert "upload_status" in publish_result
+    assert publish_result["video_id"] == "abc123"
+    assert publish_result["status"] == "uploaded"
 
     # --- Stage 12: Notify (stub Telegram HTTP) ---
-    with patch("urllib.request.urlopen", return_value=None):
+    telegram_requests = []
+
+    class StubTelegramResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps({"ok": True}).encode("utf-8")
+
+    def stub_urlopen(request):
+        telegram_requests.append(request)
+        return StubTelegramResponse()
+
+    with patch("urllib.request.urlopen", stub_urlopen):
         send_run_notification("success", f"Episode published: {episode_script['title']}", config)
+
+    assert len(telegram_requests) == 1
 
     # --- Final assertions ---
     # Pipeline survived end-to-end with real business logic at every stage

@@ -1,6 +1,15 @@
 from reddit_automation.clients.llm_client import LLMClient
 
 
+SCORE_KEYS = (
+    "reaction_potential",
+    "laugh_factor",
+    "story_payoff",
+    "clarity_after_rewrite",
+    "comment_bonus",
+)
+
+
 def _build_scoring_payload(candidate: dict) -> dict:
     """Shape a single candidate for the LLM scoring prompt."""
     return {
@@ -57,6 +66,20 @@ def meets_quality_threshold(scored_candidate: dict, thresholds: dict) -> bool:
         and scored_candidate["laugh_factor"] >= thresholds["min_laugh_factor"]
         and scored_candidate["overall_score"] >= thresholds["min_overall_score"]
     )
+
+
+def should_keep_candidate(scored_candidate: dict, thresholds: dict) -> bool:
+    return meets_quality_threshold(scored_candidate, thresholds)
+
+
+def _candidates_have_prefetched_scores(candidates: list[dict]) -> bool:
+    return all(all(score_key in candidate for score_key in SCORE_KEYS) for candidate in candidates)
+
+
+def score_candidates(candidates: list[dict], config: dict) -> list[dict]:
+    if _candidates_have_prefetched_scores(candidates):
+        return score_pre_fetched_candidates(candidates, config)
+    return score_candidates_with_llm(candidates, config)
 
 
 def score_pre_fetched_candidates(candidates: list[dict], config: dict) -> list[dict]:

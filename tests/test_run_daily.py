@@ -799,3 +799,231 @@ def test_run_daily_pipeline_fails_after_exhausting_retries(tmp_path, monkeypatch
     assert fetch_calls[0] == 3
     # Should have sent failure notification
     assert any(s == "failure" for s, _m in notify_calls)
+
+
+def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    schema_path = tmp_path / "schema.sql"
+    render_dir = tmp_path / "renders"
+    assets_dir = tmp_path / "assets"
+    output_dir = tmp_path / "output"
+    write_test_schema(schema_path)
+
+    config = {
+        "storage": {
+            "db_path": str(db_path),
+            "schema_path": str(schema_path),
+        },
+        "project": {
+            "episode_date": "2026-04-03",
+            "final_pick_count": 3,
+            "backup_pick_count": 2,
+            "render_dir": str(render_dir),
+            "assets_dir": str(assets_dir),
+        },
+        "comments": {
+            "top_n_per_candidate": 5,
+            "max_selected_comments_per_segment": 2,
+        },
+        "filters": {
+            "exclude_categories": ["politics", "culture_war", "tragedy", "abuse", "death", "nsfw"],
+            "exclude_low_context": True,
+            "dedupe_similar_posts": True,
+            "min_body_or_comment_signal": 1,
+        },
+        "scoring": {
+            "weights": {
+                "reaction_potential": 0.40,
+                "laugh_factor": 0.25,
+                "story_payoff": 0.15,
+                "clarity_after_rewrite": 0.10,
+                "comment_bonus": 0.10,
+            },
+            "thresholds": {
+                "min_reaction_potential": 8,
+                "min_laugh_factor": 7,
+                "min_overall_score": 7.2,
+            },
+        },
+        "hosts": {
+            "host_1": {"key": "host_1", "name": "Host 1", "role": "main"},
+            "host_2": {"key": "host_2", "name": "Host 2", "role": "adaptive"},
+        },
+        "scripting": {
+            "target_segments": 3,
+            "cold_open_seconds": 15,
+            "outro_seconds": 40,
+            "max_direct_quote_words": 12,
+        },
+        "render": {
+            "resolution": "1920x1080",
+            "fps": 30,
+            "slide_style": "minimal",
+        },
+        "publishing": {
+            "default_privacy_status": "private",
+        },
+        "alerts": {
+            "telegram_on_success": True,
+            "telegram_on_failure": True,
+            "telegram_bot_token": "test-token",
+            "telegram_chat_id": "test-chat",
+        },
+        "output_dir": str(output_dir),
+        "reddit_test_data": {
+            "submissions": [
+                {
+                    "id": "post-1",
+                    "subreddit": "tifu",
+                    "title": "TIFU by accidentally starting a neighbourhood war",
+                    "selftext": "So this happened last weekend when I meant to compliment my neighbour's lawn.",
+                    "url": "https://reddit.com/r/tifu/comments/post1",
+                    "author": "user1",
+                    "created_utc": 1712345000,
+                    "score": 500,
+                    "num_comments": 3,
+                    "comments": [
+                        {"id": "c1", "body": "This is hilarious.", "score": 200, "author": "commenter1", "created_utc": 1712345001},
+                        {"id": "c2", "body": "The ending got me.", "score": 150, "author": "commenter2", "created_utc": 1712345002},
+                        {"id": "c3", "body": "I had something similar happen.", "score": 80, "author": "commenter3", "created_utc": 1712345003},
+                    ],
+                },
+                {
+                    "id": "post-2",
+                    "subreddit": "AmItheAsshole",
+                    "title": "AITA for refusing to share my wifi password?",
+                    "selftext": "My neighbour keeps asking for my wifi password and I keep saying no.",
+                    "url": "https://reddit.com/r/AmItheAsshole/comments/post2",
+                    "author": "user2",
+                    "created_utc": 1712345100,
+                    "score": 400,
+                    "num_comments": 2,
+                    "comments": [
+                        {"id": "c4", "body": "NTA, it's your property.", "score": 120, "author": "commenter4", "created_utc": 1712345101},
+                        {"id": "c5", "body": "Just get a guest network.", "score": 90, "author": "commenter5", "created_utc": 1712345102},
+                    ],
+                },
+                {
+                    "id": "post-3",
+                    "subreddit": "MaliciousCompliance",
+                    "title": "Boss said no overtime, so I left a project unfinished",
+                    "selftext": "My manager said we're not allowed to work overtime, so I left at 5pm exactly.",
+                    "url": "https://reddit.com/r/MaliciousCompliance/comments/post3",
+                    "author": "user3",
+                    "created_utc": 1712345200,
+                    "score": 600,
+                    "num_comments": 2,
+                    "comments": [
+                        {"id": "c6", "body": "Classic malicious compliance.", "score": 300, "author": "commenter6", "created_utc": 1712345201},
+                        {"id": "c7", "body": "Management did this to themselves.", "score": 200, "author": "commenter7", "created_utc": 1712345202},
+                    ],
+                },
+            ]
+        },
+    }
+
+    tts_calls = []
+    stitch_calls = []
+    rendered_scene_prompts = []
+    render_calls = []
+    notification_requests = []
+
+    monkeypatch.setattr(run_daily_module, "load_config", lambda: config)
+
+    def stub_llm_complete(self, prompt_name, payload):
+        assert prompt_name == "scoring"
+        return {
+            "reaction_potential": 10,
+            "laugh_factor": 8,
+            "story_payoff": 7,
+            "clarity_after_rewrite": 9,
+            "comment_bonus": 6,
+        }
+
+    def stub_tts_generate(self, speaker_key, text):
+        tts_calls.append((speaker_key, text))
+        path = tmp_path / f"{len(tts_calls):04d}-{speaker_key}.mp3"
+        path.write_bytes(b"audio")
+        return str(path)
+
+    def stub_stitch_audio_clips(audio_paths, output_path):
+        stitch_calls.append((audio_paths, output_path))
+        output = tmp_path / "episode_audio.mp3"
+        output.write_bytes(b"stitched-audio")
+        return str(output)
+
+    class StubFalClient:
+        def __init__(self, api_key=None, config=None):
+            self.config = config
+
+        def generate(self, prompt, output_path, max_retries=30, poll_interval=2.0):
+            rendered_scene_prompts.append(prompt)
+            output_file = tmp_path / output_path.split("/")[-1]
+            output_file.write_bytes(b"image")
+            return str(output_file)
+
+    def stub_render_video(*, audio_path, visual_plan, output_path, config, scene_images=None):
+        render_calls.append(
+            {
+                "audio_path": audio_path,
+                "visual_plan": visual_plan,
+                "output_path": output_path,
+                "scene_images": scene_images,
+            }
+        )
+
+    class StubTelegramResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return json.dumps({"ok": True}).encode("utf-8")
+
+    def stub_urlopen(request):
+        notification_requests.append(request)
+        return StubTelegramResponse()
+
+    monkeypatch.setattr("reddit_automation.clients.llm_client.LLMClient.complete_json", stub_llm_complete)
+    monkeypatch.setattr("reddit_automation.clients.tts_client.TTSClient.generate", stub_tts_generate)
+    monkeypatch.setattr("reddit_automation.pipeline.voice.stitch_audio_clips", stub_stitch_audio_clips)
+    monkeypatch.setattr("reddit_automation.pipeline.generate_scenes.FalClient", StubFalClient)
+    monkeypatch.setattr("reddit_automation.pipeline.render.render_video", stub_render_video)
+    monkeypatch.setattr(
+        run_daily_module,
+        "publish_episode",
+        lambda _video_path, _metadata, _config: {
+            "video_id": "abc123",
+            "url": "https://www.youtube.com/watch?v=abc123",
+            "status": "uploaded",
+            "privacy_status": "private",
+        },
+    )
+    monkeypatch.setattr("urllib.request.urlopen", stub_urlopen)
+
+    result = run_daily_module.run_daily_pipeline()
+
+    assert result["status"] == "success"
+    assert result["run_date"] == "2026-04-03"
+    assert result["publish_result"]["video_id"] == "abc123"
+    assert tts_calls, "voice stage should synthesize dialogue"
+    assert stitch_calls, "voice stage should stitch generated clips"
+    assert rendered_scene_prompts, "render stage should generate scene prompts"
+    assert render_calls[0]["scene_images"], "render stage should receive generated scene images"
+    assert len(notification_requests) == 1
+
+    with sqlite3.connect(db_path) as conn:
+        candidate_ids = conn.execute(
+            "SELECT reddit_post_id FROM reddit_candidates ORDER BY reddit_post_id"
+        ).fetchall()
+        run_log = conn.execute(
+            "SELECT run_date, stage, status, message, payload_json FROM run_logs ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+
+    assert candidate_ids == [("post-1",), ("post-2",), ("post-3",)]
+    assert run_log[0] == "2026-04-03"
+    assert run_log[1] == "publish"
+    assert run_log[2] == "success"
+    assert json.loads(run_log[4])["publish_result"]["video_id"] == "abc123"
