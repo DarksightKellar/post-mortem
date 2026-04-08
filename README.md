@@ -60,6 +60,10 @@ pytest
 
 Strict TDD: I/O boundaries (TTS, FFmpeg, YouTube, Reddit) are monkeypatched so no side effects.
 
+## License
+
+MIT. See `LICENSE`.
+
 ## Dependencies
 
 All dependencies are managed via `pyproject.toml`. Install with `pip install -e ".[dev]"`.
