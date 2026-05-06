@@ -140,6 +140,29 @@ class TestTriggerRunResultInterpretation:
 
         srv.shutdown()
 
+    def test_success_with_render_fallback_mentions_fallback_visuals(self):
+        srv, t = _start_server({
+            "status": "success",
+            "run_date": "2026-04-05",
+            "title": "Test Episode Title",
+            "render_fallback_used": True,
+        })
+        port = srv.server_address[1]
+        base = f"http://127.0.0.1:{port}"
+
+        _post(f"{base}/api/cron/run")
+
+        for _ in range(20):
+            _, state = _get(f"{base}/api/run/status")
+            if state.get("status") in ("completed", "failed"):
+                break
+            time.sleep(0.5)
+
+        assert state["status"] == "completed"
+        assert "fallback visuals" in state["message"].lower()
+
+        srv.shutdown()
+
     def test_exception_shows_failed(self):
         """When pipeline raises, dashboard must show failed with error."""
         class BrokenPipeline:

@@ -29,10 +29,35 @@ def test_build_episode_outline_returns_primary_items_as_ordered_segments():
 
 
 
-def test_build_episode_outline_adds_segment_visual_notes_placeholders():
+def test_build_episode_outline_uses_episode_target_minutes_as_segment_budget():
     selected_items = {
         "primary": [
             {"reddit_post_id": "p1", "title": "First story", "subreddit": "AskReddit"},
+            {"reddit_post_id": "p2", "title": "Second story", "subreddit": "tifu"},
+            {"reddit_post_id": "p3", "title": "Third story", "subreddit": "AmItheAsshole"},
+        ],
+        "backups": [],
+    }
+    config = {
+        "project": {"episode_target_minutes": 2},
+        "scripting": {"target_segments": 3, "minutes_per_segment": 1.5},
+    }
+
+    outline = build_episode_outline(selected_items, config)
+
+    assert [segment["source"]["reddit_post_id"] for segment in outline["segments"]] == ["p1"]
+
+
+
+def test_build_episode_outline_adds_segment_visual_notes_from_story_context():
+    selected_items = {
+        "primary": [
+            {
+                "reddit_post_id": "p1",
+                "title": "First story",
+                "subreddit": "AskReddit",
+                "summary": "A lunch prank blew up the office.",
+            },
         ],
         "backups": [],
     }
@@ -44,7 +69,10 @@ def test_build_episode_outline_adds_segment_visual_notes_placeholders():
 
     outline = build_episode_outline(selected_items, config)
 
-    assert outline["segments"][0]["visual_notes"] == ["Placeholder visual note for p1"]
+    visual_note = outline["segments"][0]["visual_notes"][0]
+    assert "Placeholder" not in visual_note
+    assert "r/AskReddit" in visual_note
+    assert "A lunch prank blew up the office." in visual_note
 
 
 def test_build_episode_outline_returns_selection_primary_items_in_order():
@@ -103,7 +131,7 @@ def test_build_episode_outline_returns_selection_primary_items_in_order():
     }
 
 
-def test_build_episode_outline_adds_title_angle_and_cold_open_placeholders():
+def test_build_episode_outline_adds_title_angle_and_cold_open_from_selected_story():
     selected_items = {
         "primary": [
             {
@@ -129,15 +157,17 @@ def test_build_episode_outline_adds_title_angle_and_cold_open_placeholders():
     outline = build_episode_outline(selected_items, config)
 
     assert outline["episode_date"] == "2026-04-03"
-    assert outline["title_angle"] == "Placeholder: AITA for leaving my own birthday dinner?"
-    assert outline["cold_open"] == {
-        "hook": "Placeholder hook for abc123",
-        "visual_note": "Placeholder visual note for abc123",
-    }
+    assert "Placeholder" not in outline["title_angle"]
+    assert "birthday dinner" in outline["title_angle"].lower()
+    assert outline["cold_open"]["hook"]
+    assert "Placeholder" not in outline["cold_open"]["hook"]
+    assert "walked out" in outline["cold_open"]["hook"].lower()
+    assert "r/AmItheAsshole" in outline["cold_open"]["visual_note"]
+    assert "OP walked out after family drama." in outline["cold_open"]["visual_note"]
 
 
 
-def test_build_episode_outline_adds_outro_placeholders():
+def test_build_episode_outline_adds_outro_from_primary_and_backup_story():
     selected_items = {
         "primary": [
             {
@@ -149,7 +179,16 @@ def test_build_episode_outline_adds_outro_placeholders():
                 "url": "https://reddit.com/abc123",
             }
         ],
-        "backups": [],
+        "backups": [
+            {
+                "reddit_post_id": "backup456",
+                "subreddit": "tifu",
+                "title": "TIFU by sending a complaint to the wrong email.",
+                "summary": "A workplace complaint landed in the boss inbox.",
+                "author": "user2",
+                "url": "https://reddit.com/backup456",
+            }
+        ],
     }
     config = {
         "project": {
@@ -162,8 +201,11 @@ def test_build_episode_outline_adds_outro_placeholders():
 
     outline = build_episode_outline(selected_items, config)
 
-    assert outline["outro"] == {
-        "callback": "Placeholder callback for abc123",
-        "tomorrow_tease": "Placeholder tease for next episode",
-        "visual_note": "Placeholder outro visual note for abc123",
-    }
+    assert outline["outro"]["callback"]
+    assert "Placeholder" not in outline["outro"]["callback"]
+    assert "birthday dinner" in outline["outro"]["callback"].lower()
+    assert outline["outro"]["tomorrow_tease"]
+    assert "Placeholder" not in outline["outro"]["tomorrow_tease"]
+    assert "wrong email" in outline["outro"]["tomorrow_tease"].lower()
+    assert "Placeholder" not in outline["outro"]["visual_note"]
+    assert "r/AmItheAsshole" in outline["outro"]["visual_note"]

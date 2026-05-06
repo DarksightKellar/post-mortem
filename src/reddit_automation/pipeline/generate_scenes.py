@@ -6,7 +6,7 @@ import pathlib
 from reddit_automation.utils.fal_client import FalClient
 
 
-def build_prompt_for_scene(scene: dict, style: str = "minimal") -> str:
+def build_prompt_for_scene(scene: dict, style: str = "minimal", resolution: str | None = None) -> str:
     """Build a fal.ai prompt from a scene's visual note text.
     
     Enhances the raw visual note with aspect ratio and style hints
@@ -31,8 +31,10 @@ def build_prompt_for_scene(scene: dict, style: str = "minimal") -> str:
     elif scene_type == "outro":
         prompt_parts.insert(0, "An outro / closing card showing:")
     
-    if style and style != "minimal":
+    if style:
         prompt_parts.append(f"Style: {style}")
+    if resolution:
+        prompt_parts.append(f"Target resolution: {resolution}")
     
     prompt_parts.append("High quality, clean composition, 16:9 aspect ratio")
     
@@ -67,7 +69,7 @@ def generate_scene_images(visual_plan: dict, config: dict) -> list:
         if not text or not text.strip():
             continue
         
-        prompt = build_prompt_for_scene(scene, style)
+        prompt = build_prompt_for_scene(scene, style, resolution)
         if not prompt:
             continue
         

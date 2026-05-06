@@ -1,5 +1,4 @@
 import json
-import urllib.error
 import urllib.request
 
 
@@ -25,12 +24,29 @@ def _deliver_notification(message: str, config: dict) -> None:
             )
 
 
-def send_run_notification(status: str, message: str, config: dict) -> None:
-    """Send run notifications when enabled by configuration."""
+def send_run_notification(status: str, message: str, config: dict) -> dict[str, object]:
+    """Send run notifications when enabled by configuration without raising."""
     alerts = config.get("alerts", {}) if isinstance(config, dict) else {}
+    should_send = (
+        (status == "success" and alerts.get("telegram_on_success"))
+        or (status == "failure" and alerts.get("telegram_on_failure"))
+    )
 
-    if status == "success" and alerts.get("telegram_on_success"):
-        _deliver_notification(message, config)
+    if not should_send:
+        return {"sent": False, "error": None}
 
-    if status == "failure" and alerts.get("telegram_on_failure"):
+    missing_credentials = [
+        key for key in ("telegram_bot_token", "telegram_chat_id") if not alerts.get(key)
+    ]
+    if missing_credentials:
+        return {
+            "sent": False,
+            "error": f"Missing Telegram credentials: {', '.join(missing_credentials)}",
+        }
+
+    try:
         _deliver_notification(message, config)
+    except Exception as exc:
+        return {"sent": False, "error": str(exc)}
+
+    return {"sent": True, "error": None}

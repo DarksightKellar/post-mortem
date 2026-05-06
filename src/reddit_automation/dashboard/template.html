@@ -8,9 +8,10 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f1117;
-            color: #e0e0e0;
-            padding: 2rem;
+            margin: 0;
+            background: #0B0F14;
+            color: #F5E6C8;
+            padding: 0;
         }
         h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #fff; }
         h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: #aaa; }
@@ -222,61 +223,241 @@
         }
         .save-status.ok { color: #4ade80; }
         .save-status.error { color: #f87171; }
-    </style>
+
+        /* ---- Postmortem shell (Hermes web UI inspired) ------------------ */
+        #pm-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #0B0F14;
+        }
+
+        #pm-topbar {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            background: #151B23;
+            border-bottom: 1px solid rgba(143, 155, 179, 0.25);
+        }
+
+        #pm-brand {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.05;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+
+        .pm-brand-sub {
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            color: #8F9BB3;
+            margin-top: 2px;
+        }
+
+        #pm-topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pm-topbar-kicker {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            color: #8F9BB3;
+            text-transform: uppercase;
+            padding: 6px 10px;
+            border: 1px solid rgba(143, 155, 179, 0.35);
+            border-radius: 999px;
+        }
+
+        #pm-layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 0;
+        }
+
+        #pm-sidebar { background: #0F131B; }
+
+        #pm-sidebar {
+            border-right: 1px solid rgba(143, 155, 179, 0.2);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .pm-nav { display: flex; flex-direction: column; gap: 10px; }
+        .pm-nav-item {
+            appearance: none;
+            border: 1px solid rgba(143, 155, 179, 0.3);
+            background: rgba(21, 27, 35, 0.65);
+            color: #F5E6C8;
+            border-radius: 10px;
+            padding: 12px 12px;
+            cursor: pointer;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-align: left;
+            transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
+        }
+        .pm-nav-item:hover { transform: translateY(-1px); border-color: rgba(242, 193, 78, 0.55); }
+        .pm-nav-item.active {
+            border-color: rgba(242, 193, 78, 0.7);
+            background: rgba(242, 193, 78, 0.12);
+        }
+
+        .pm-sidebar-footer { margin-top: auto; }
+        .pm-footnote {
+            font-size: 12px;
+            color: #8F9BB3;
+            line-height: 1.35;
+        }
+
+        #pm-main {
+            padding: 18px;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .pm-page { display: none; }
+        .pm-page.active { display: block; }
+
+        .pm-page-header {
+            margin-bottom: 14px;
+        }
+        .pm-page-header h2 {
+            color: #F5E6C8;
+            font-size: 18px;
+            letter-spacing: 0.02em;
+            margin: 0;
+        }
+
+</style>
 </head>
 <body>
-    <h1>📊 Reddit Content Automation Dashboard</h1>
-
-    <div class="stats" id="stats"></div>
-
-    <div id="progress-section">
-        <h2 id="progress-title">Pipeline Running</h2>
-        <div class="progress-bar-track">
-            <div class="progress-bar-fill" id="progress-fill"></div>
-        </div>
-        <div class="progress-message" id="progress-message"></div>
-        <div class="progress-stages" id="progress-stages"></div>
-    </div>
-
-    <div class="section">
-        <h2>Recent Runs</h2>
-        <table id="runs-table">
-            <thead>
-                <tr><th>Date</th><th>Stage</th><th>Status</th><th>Message</th></tr>
-            </thead>
-            <tbody id="runs-body"></tbody>
-        </table>
-    </div>
-
-    <div class="section">
-        <h2>Cron Job</h2>
-        <div class="controls">
-            <button id="cron-toggle" onclick="toggleCron()"></button>
-            <button id="run-now-btn" onclick="runNow()">Run Now</button>
-        </div>
-        <p class="refresh-note" id="cron-status"></p>
-    </div>
-
-    <div class="section">
-        <h2>Configuration</h2>
-        <div class="config-editor-wrapper">
-            <div class="editor-body">
-                <div class="config-section" id="config-editor"></div>
+    <div id="pm-shell">
+        <header id="pm-topbar">
+            <div id="pm-brand">
+                📊 Postmortem Console
+                <span class="pm-brand-sub">Reddit Content Automation — Dashboard</span>
             </div>
-            <div class="editor-actions">
-                <button onclick="saveConfig()" id="save-btn">Save</button>
-                <div class="save-status" id="save-status"></div>
+            <div id="pm-topbar-right">
+                <span class="pm-topbar-kicker">Live</span>
             </div>
+        </header>
+
+        <div id="pm-layout">
+            <aside id="pm-sidebar">
+                <div class="pm-nav">
+                    <button class="pm-nav-item" data-page-nav="progress" onclick="pmSetPage('progress')">
+                        Pipeline
+                    </button>
+                    <button class="pm-nav-item" data-page-nav="runs" onclick="pmSetPage('runs')">
+                        Recent Runs
+                    </button>
+                    <button class="pm-nav-item" data-page-nav="cron" onclick="pmSetPage('cron')">
+                        Cron
+                    </button>
+                    <button class="pm-nav-item" data-page-nav="config" onclick="pmSetPage('config')">
+                        Config
+                    </button>
+                </div>
+                <div class="pm-sidebar-footer">
+                    <div class="pm-footnote">Evidence-board UI inspired by Hermes Web UI shell.</div>
+                </div>
+            </aside>
+
+            <main id="pm-main">
+                <section class="pm-page" data-page="progress">
+                    <div class="pm-page-header">
+                        <h2>Pipeline</h2>
+                    </div>
+
+                    <div class="stats" id="stats"></div>
+
+                    <div id="progress-section">
+                        <h2 id="progress-title">Pipeline Running</h2>
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-message" id="progress-message"></div>
+                        <div class="progress-stages" id="progress-stages"></div>
+                    </div>
+                </section>
+
+                <section class="pm-page" data-page="runs">
+                    <div class="section">
+                        <h2>Recent Runs</h2>
+                        <table id="runs-table">
+                            <thead>
+                                <tr><th>Date</th><th>Stage</th><th>Status</th><th>Message</th></tr>
+                            </thead>
+                            <tbody id="runs-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="pm-page" data-page="cron">
+                    <div class="section">
+                        <h2>Cron Job</h2>
+                        <div class="controls">
+                            <button id="cron-toggle" onclick="toggleCron()"></button>
+                            <button id="run-now-btn" onclick="runNow()">Run Now</button>
+                        </div>
+                        <p class="refresh-note" id="cron-status"></p>
+                    </div>
+                </section>
+
+                <section class="pm-page" data-page="config">
+                    <div class="section">
+                        <h2>Configuration</h2>
+                        <div class="config-editor-wrapper">
+                            <div class="editor-body">
+                                <div class="config-section" id="config-editor"></div>
+                            </div>
+                            <div class="editor-actions">
+                                <button onclick="saveConfig()" id="save-btn">Save</button>
+                                <div class="save-status" id="save-status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
     </div>
+<script>
+        function pmSetPage(page) {
+            const pages = document.querySelectorAll('[data-page]');
+            pages.forEach((el) => {
+                const p = el.getAttribute('data-page');
+                el.classList.toggle('active', p === page);
+            });
+            const navItems = document.querySelectorAll('[data-page-nav]');
+            navItems.forEach((el) => {
+                const p = el.getAttribute('data-page-nav');
+                el.classList.toggle('active', p === page);
+            });
+            try { localStorage.setItem('pm.activePage', page); } catch (e) {}
+        }
 
-    <script>
-        const API = window.location.pathname.replace(/dashboard\/?$/, '') + 'api';
+        // Default active page: last used, otherwise Pipeline.
+        pmSetPage((() => {
+            try { return localStorage.getItem('pm.activePage') || 'progress'; }
+            catch (e) { return 'progress'; }
+        })());
+
+        const API = '/api';
         const STAGES = ['fetch', 'filter', 'store', 'score', 'select',
                         'outline', 'script', 'voice', 'visuals', 'render', 'publish'];
         let configData = null;
         let runStartTime = null;
         let elapsedTimer = null;
+        let runInterval = null;
         let consecutiveFailures = 0;
         const MAX_FAILURES = 5;
 
@@ -493,8 +674,9 @@
             try {
                 const state = await fetch(API + '/run/status').then(r => r.json());
                 updateProgressUI(state);
+                return state;
             } catch (e) {
-                /* silent */
+                return { status: 'failed', message: e.message };
             }
         }
 

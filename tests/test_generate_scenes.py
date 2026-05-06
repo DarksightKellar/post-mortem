@@ -30,6 +30,15 @@ def test_build_prompt_enhances_visual_note_with_style():
     assert "cinematic" in prompt
 
 
+def test_build_prompt_includes_minimal_style_and_target_resolution_when_configured():
+    scene = {"type": "segment", "text": "Airport lunchbox on a TSA tray"}
+
+    prompt = build_prompt_for_scene(scene, style="minimal", resolution="1280x720")
+
+    assert "Style: minimal" in prompt
+    assert "Target resolution: 1280x720" in prompt
+
+
 def test_generate_scene_images_calls_fal_client_for_each_scene(tmp_path, monkeypatch):
     visual_plan = {
         "episode_date": "2026-04-03",

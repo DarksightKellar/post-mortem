@@ -101,6 +101,7 @@ def test_full_pipeline_fetch_through_publish(tmp_path, monkeypatch):
     config = _load_config()
     config["reddit_test_data"] = {"submissions": submissions}
     config["project"]["episode_date"] = "2026-04-03"
+    config["alerts"]["telegram_on_success"] = True
     config["alerts"]["telegram_bot_token"] = "test-token"
     config["alerts"]["telegram_chat_id"] = "test-chat"
 
@@ -186,19 +187,11 @@ def test_full_pipeline_fetch_through_publish(tmp_path, monkeypatch):
     assert len(visual_plan["scenes"]) >= 2  # at minimum: title_card + outro
     assert visual_plan["scenes"][0]["type"] == "title_card"
 
-    # --- Stage 10: Render (stub scene generation + render backend) ---
+    # --- Stage 10: Render (stub HyperFrames render backend) ---
     config["project"]["render_dir"] = str(tmp_path / "renders")
 
-    def stub_generate_scene_images(visual_plan, config):
-        return []
-
-    with patch(
-        "reddit_automation.pipeline.render.generate_scene_images", stub_generate_scene_images,
-    ):
-        with patch(
-            "reddit_automation.pipeline.render.render_video"
-        ) as mock_render:
-            render_result = render_episode_video(rendered_audio_path, visual_plan, config)
+    with patch("reddit_automation.pipeline.render.render_video") as mock_render:
+        render_result = render_episode_video(rendered_audio_path, visual_plan, config)
 
     assert render_result.endswith(".mp4")
     assert mock_render.call_count == 1

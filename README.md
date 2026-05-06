@@ -1,135 +1,154 @@
 # Postmortem
 
-Postmortem is an automated daily pipeline that turns funny Reddit threads into ~5-minute podcast-style YouTube videos with AI hosts.
+Postmortem turns Reddit threads into podcast-style video episodes.
 
-## What it does
+Current real pipeline:
+- fetch specific pasted Reddit post URLs without OAuth, or bulk-fetch curated subreddits with OAuth/Data API credentials
+- filter and store survivors in SQLite
+- score candidates locally with deterministic heuristics
+- select episode items
+- build placeholder outline/script/visual plan
+- generate TTS audio with the configured TTS provider
+- render video with HyperFrames HTML compositions
+- optionally publish to YouTube
+- optionally notify via Telegram
 
-Runs on a schedule to:
-1. **Fetch** top posts from curated subreddits
-2. **Filter** out politics, NSFW, tragedy, and low-context content
-3. **Score** candidates on reaction potential, laugh factor, and story payoff
-4. **Select** the best 3 threads (+ 2 backups) per episode
-5. **Outline** a structured episode plan
-6. **Write** a two-host dialogue script
-7. **Generate** TTS audio for both hosts (using free edge-tts)
-8. **Render** video with slides and caption support
-9. **Publish** to YouTube
-
-Two AI hosts react to each thread in a recurring show format — witty banter, not plain narration.
-
-## Quick Start
-
-### Prerequisites
+## Prerequisites
 
 - Python 3.11+
-- `ffmpeg` installed and on PATH (for audio/video rendering)
+- Node.js 22+ and `npx`
+- HyperFrames CLI (`npx hyperframes doctor` should pass)
+- ffmpeg + ffprobe on PATH
 
-### Install
-
-Create a virtual environment (required on Debian/Ubuntu — systems with PEP 668 block system-wide pip installs):
+## Install
 
 ```bash
-cd post-mortem
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-> Note: If `python3 -m venv` fails, install the missing package first:
-> `sudo apt install python3-venv`
-
-### Run the pipeline
+If `python3 -m venv` fails on Debian/Ubuntu:
 
 ```bash
-python -m reddit_automation.pipeline.run_daily
+sudo apt install python3-venv
 ```
 
-### Run the dashboard
+## Run the pipeline
+
+Canonical entrypoint:
+
+```bash
+python -m main
+```
+
+Notes:
+- By default, `publishing.youtube_auto_publish` is `false`, so the pipeline can succeed locally without YouTube auth.
+- No-key Reddit MVP mode uses `sources.reddit_post_urls`; fixture-backed runs can still use `reddit_test_data.submissions` without network access.
+- Bulk subreddit Reddit fetch still requires OAuth credentials.
+- Render uses HyperFrames. The pipeline writes a deterministic HTML composition under `render_dir/.hyperframes/<episode>/`, runs `hyperframes lint`, `validate`, `inspect`, then renders the final MP4.
+
+## Run the dashboard
 
 ```bash
 python -m reddit_automation.dashboard.server
 ```
 
-Opens on http://127.0.0.1:8888 — shows stats, run history, config viewer, and cron controls.
+Dashboard:
+- URL: http://127.0.0.1:8888
+- shows run history and progress
+- lets you edit user-provided config values
+- lets you trigger runs and pause/resume cron
 
-### Run tests
+## Tests
 
 ```bash
 pytest
 ```
 
-Strict TDD: I/O boundaries (TTS, FFmpeg, YouTube, Reddit) are monkeypatched so no side effects.
+## Required / optional setup
+
+### No-key Reddit URL mode
+
+For the MVP path, paste specific Reddit thread URLs into config:
+
+```yaml
+sources:
+  reddit_post_urls:
+    - https://www.reddit.com/r/AskReddit/comments/abc123/funniest_thing/
+```
+
+When `sources.reddit_post_urls` is present and non-empty, it takes priority over `sources.subreddits` and does **not** require OAuth credentials. The pipeline makes one small public thread request per pasted URL.
+
+If Reddit still blocks that URL request, the pipeline fails with a clear manual fallback message: paste the post title, body, and useful comments into `reddit_test_data.submissions`.
+
+### Bulk subreddit fetch
+
+Bulk subreddit fetch requires OAuth/Data API credentials.
+
+Create credentials:
+1. Go to https://www.reddit.com/prefs/apps
+2. Click **create app** or **create another app**.
+3. Choose **script** for local automation.
+4. Use any name, e.g. `Postmortem Local Fetch`.
+5. Set redirect URI to `http://localhost:8080` even though this app uses client credentials.
+6. After creation:
+   - client ID is the short string under the app name
+   - client secret is labeled `secret`
+
+Then export credentials before running live fetch:
+
+```bash
+export REDDIT_CLIENT_ID="your_reddit_app_client_id"
+export REDDIT_CLIENT_SECRET="your_reddit_app_client_secret"
+export REDDIT_USER_AGENT="Postmortem/0.1 by u/your_reddit_username"
+```
+
+Or copy `.env.example` to `.env` and source it manually:
+
+```bash
+cp .env.example .env
+# edit .env, then:
+set -a
+source .env
+set +a
+```
+
+Never commit real Reddit secrets. `.env` is ignored by git.
+
+Optional services:
+- HyperFrames video rendering
+  - install/check: `npx hyperframes doctor`
+  - config: `render.engine: hyperframes`
+  - generated composition source: `<render_dir>/.hyperframes/<episode>/index.html`
+- QwenTTS via ComfyUI
+  - install/run ComfyUI separately
+  - install custom node: https://github.com/1038lab/ComfyUI-QwenTTS
+  - verify ComfyUI is reachable at `tts.comfy_qwen_tts.base_url`
+  - set `tts.provider: comfy_qwen_tts`
+  - use host `qwen_voice_id` values such as `Ryan` and `Serena`
+- YouTube publishing
+  - set `publishing.youtube_auto_publish: true`
+  - provide OAuth client secrets file and token path in dashboard/config
+- Telegram notifications
+  - provide `alerts.telegram_bot_token`
+  - provide `alerts.telegram_chat_id`
+
+## Current implementation truth
+
+Working now:
+- no-key pasted Reddit URL ingestion, authenticated bulk Reddit fetch, fixture override, 429 retry/backoff, pacing, and comment request budgeting
+- filter
+- SQLite storage
+- local scoring
+- selection
+- configured TTS voice generation
+- HyperFrames HTML composition render
+- dashboard config editing
+
+Still placeholder / basic:
+- visual planning
 
 ## License
 
 MIT. See `LICENSE`.
-
-## Dependencies
-
-All dependencies are managed via `pyproject.toml`. Install with `pip install -e ".[dev]"`.
-
-**Python packages:** PyYAML, edge-tts, google-api-python-client, google-auth, google-auth-oauthlib, google-auth-httplib2, pytest (dev).
-
-**External binaries:** ffmpeg + ffprobe (system install, not pip-managed).
-
-**API keys (optional, via environment variables):**
-
-| Variable | Purpose |
-|----------|---------|
-| `FAL_KEY` | Fal.ai API key for AI image generation (visuals) |
-| `YOUTUBE_API_KEY` | YouTube Data API key (publishing) |
-
-## Clients
-
-| Client | Status | Implementation |
-|--------|--------|----------------|
-| Reddit | Stub | Uses test data from config, no praw dependency |
-| LLM | Stub | Placeholder client, no HTTP calls |
-| TTS | Working | Uses edge-tts (free, no API key) |
-| YouTube | Wired | Uses google-api-python-client, needs OAuth2 credentials |
-| Fal.ai | Working | Uses raw urllib (no extra pip dep) |
-
-## Current State
-
-| Stage | Status |
-|-------|--------|
-| Fetch | Stub (uses test data) |
-| Filter | Done |
-| Score | Stub (LLM client is placeholder) |
-| Select | Done |
-| Outline | Stub |
-| Script | Stub |
-| TTS (Voice) | Working (edge-tts) |
-| Visuals | Stub |
-| Render | Stub (FFmpeg module wired) |
-| Publish | Stub (YouTube client wired) |
-| Notify | Done |
-| Dashboard | Running |
-| Pipeline orchestration | Done (run_daily) |
-
-## Architecture
-
-```
-post-mortem/
-├── src/reddit_automation/
-│   ├── pipeline/       # Pipeline stages: fetch, filter, score, select, outline, script, voice, visuals, render, publish, notify
-│   ├── clients/        # External service clients: Reddit, LLM, TTS, YouTube, Fal.ai
-│   ├── models/         # Data models: candidate, episode, score
-│   ├── storage/        # SQLite backing: db, candidates, episodes, runs
-│   ├── utils/          # Config, logging, paths, text, ffmpeg, retry
-│   └── dashboard/      # HTTP server + HTML UI
-├── config/config.yaml  # All tunable config
-├── data/               # SQLite DB and schema
-├── tests/              # Strict TDD
-└── schemas/            # JSON schemas for pipeline data
-```
-
-Pipeline order: `fetch -> hard filter -> store -> score -> select -> outline -> script -> voice -> visuals -> render -> publish -> notify`
-
-## Design Rules
-
-- Rejected candidates do not enter the main DB
-- Heavily rewrite content — no long verbatim Reddit quotes
-- Max 12 direct-quote words per line
-- Configurable scoring weights (sum to ~1.0)
-- Anything likely tuned in the future goes in YAML or prompt files, not code

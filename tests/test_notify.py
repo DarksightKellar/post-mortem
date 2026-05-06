@@ -1,11 +1,20 @@
 import json
 import urllib.request
-from unittest.mock import MagicMock
+
+import pytest
+
 from reddit_automation.pipeline import notify as notify_module
 
 
 def test_send_run_notification_delivers_success_when_enabled(monkeypatch):
-    config = {"alerts": {"telegram_on_success": True, "telegram_on_failure": False}}
+    config = {
+        "alerts": {
+            "telegram_on_success": True,
+            "telegram_on_failure": False,
+            "telegram_bot_token": "TEST_TOKEN",
+            "telegram_chat_id": "123",
+        }
+    }
     deliveries = []
 
     def fake_deliver(message, received_config):
@@ -13,8 +22,9 @@ def test_send_run_notification_delivers_success_when_enabled(monkeypatch):
 
     monkeypatch.setattr(notify_module, "_deliver_notification", fake_deliver, raising=False)
 
-    notify_module.send_run_notification("success", "Episode published successfully: Test Title", config)
+    result = notify_module.send_run_notification("success", "Episode published successfully: Test Title", config)
 
+    assert result == {"sent": True, "error": None}
     assert deliveries == [("Episode published successfully: Test Title", config)]
 
 
@@ -27,13 +37,21 @@ def test_send_run_notification_skips_success_when_disabled(monkeypatch):
 
     monkeypatch.setattr(notify_module, "_deliver_notification", fake_deliver, raising=False)
 
-    notify_module.send_run_notification("success", "Episode published successfully: Test Title", config)
+    result = notify_module.send_run_notification("success", "Episode published successfully: Test Title", config)
 
+    assert result == {"sent": False, "error": None}
     assert deliveries == []
 
 
 def test_send_run_notification_delivers_failure_when_enabled(monkeypatch):
-    config = {"alerts": {"telegram_on_success": False, "telegram_on_failure": True}}
+    config = {
+        "alerts": {
+            "telegram_on_success": False,
+            "telegram_on_failure": True,
+            "telegram_bot_token": "TEST_TOKEN",
+            "telegram_chat_id": "123",
+        }
+    }
     deliveries = []
 
     def fake_deliver(message, received_config):
@@ -41,13 +59,21 @@ def test_send_run_notification_delivers_failure_when_enabled(monkeypatch):
 
     monkeypatch.setattr(notify_module, "_deliver_notification", fake_deliver, raising=False)
 
-    notify_module.send_run_notification("failure", "upload failed", config)
+    result = notify_module.send_run_notification("failure", "upload failed", config)
 
+    assert result == {"sent": True, "error": None}
     assert deliveries == [("upload failed", config)]
 
 
 def test_send_run_notification_skips_failure_when_disabled(monkeypatch):
-    config = {"alerts": {"telegram_on_success": True, "telegram_on_failure": False}}
+    config = {
+        "alerts": {
+            "telegram_on_success": True,
+            "telegram_on_failure": False,
+            "telegram_bot_token": "TEST_TOKEN",
+            "telegram_chat_id": "123",
+        }
+    }
     deliveries = []
 
     def fake_deliver(message, received_config):
@@ -55,9 +81,42 @@ def test_send_run_notification_skips_failure_when_disabled(monkeypatch):
 
     monkeypatch.setattr(notify_module, "_deliver_notification", fake_deliver, raising=False)
 
-    notify_module.send_run_notification("failure", "upload failed", config)
+    result = notify_module.send_run_notification("failure", "upload failed", config)
 
+    assert result == {"sent": False, "error": None}
     assert deliveries == []
+
+
+def test_send_run_notification_returns_error_instead_of_raising_when_delivery_fails(monkeypatch):
+    config = {
+        "alerts": {
+            "telegram_on_success": True,
+            "telegram_on_failure": False,
+            "telegram_bot_token": "TEST_TOKEN",
+            "telegram_chat_id": "123",
+        }
+    }
+
+    monkeypatch.setattr(
+        notify_module,
+        "_deliver_notification",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("telegram broke")),
+        raising=False,
+    )
+
+    result = notify_module.send_run_notification("success", "Episode published successfully: Test Title", config)
+
+    assert result == {"sent": False, "error": "telegram broke"}
+
+
+def test_send_run_notification_reports_missing_credentials_when_enabled():
+    config = {"alerts": {"telegram_on_success": True, "telegram_on_failure": False}}
+
+    result = notify_module.send_run_notification("success", "Episode rendered", config)
+
+    assert result["sent"] is False
+    assert "telegram_bot_token" in result["error"]
+    assert "telegram_chat_id" in result["error"]
 
 
 def test_deliver_notification_uses_telegram_bot_api(monkeypatch):
@@ -73,8 +132,13 @@ def test_deliver_notification_uses_telegram_bot_api(monkeypatch):
 
     class FakeResponse:
         status = 200
-        def __enter__(self): return self
-        def __exit__(self, *a): pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
         def read(self):
             return b'{"ok": true}'
 
@@ -96,14 +160,11 @@ def test_deliver_notification_uses_telegram_bot_api(monkeypatch):
 
 
 def test_deliver_notification_handles_missing_config_gracefully():
-    """_deliver_notification with no telegram config should not crash."""
     config = {"alerts": {}}
-    # Should not raise
     notify_module._deliver_notification("This message is sent", config)
 
 
 def test_deliver_notification_raises_on_telegram_error(monkeypatch):
-    """_deliver_notification raises when Telegram API returns an error response."""
     config = {
         "alerts": {
             "telegram_bot_token": "BAD_TOKEN",
@@ -113,13 +174,17 @@ def test_deliver_notification_raises_on_telegram_error(monkeypatch):
 
     class FakeResponse:
         status = 200
-        def __enter__(self): return self
-        def __exit__(self, *a): pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
         def read(self):
             return b'{"ok": false, "description": "Bad Request: chat not found"}'
 
     monkeypatch.setattr(urllib.request, "urlopen", lambda req: FakeResponse())
 
-    import pytest
     with pytest.raises(RuntimeError, match="Telegram API error"):
         notify_module._deliver_notification("Test", config)

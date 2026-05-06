@@ -19,6 +19,34 @@ from reddit_automation.utils.retry import retry_with_backoff
 
 DEFAULT_RETRYABLE = (ConnectionError, OSError, TimeoutError)
 
+
+def _send_notification_safely(status: str, message: str, config: dict) -> dict[str, object]:
+    try:
+        result = send_run_notification(status, message, config)
+    except Exception as exc:
+        return {"sent": False, "error": str(exc)}
+
+    if isinstance(result, dict):
+        return {
+            "sent": bool(result.get("sent", False)),
+            "error": result.get("error"),
+        }
+
+    return {"sent": False, "error": None}
+
+
+def _publish_enabled(config: dict) -> bool:
+    return bool(config.get("publishing", {}).get("youtube_auto_publish", False))
+
+
+def _render_fallback_metadata(visual_plan: dict) -> dict[str, object]:
+    used = bool(visual_plan.get("render_fallback_used"))
+    metadata: dict[str, object] = {"render_fallback_used": used}
+    if used and visual_plan.get("render_fallback_reason"):
+        metadata["render_fallback_reason"] = visual_plan["render_fallback_reason"]
+    return metadata
+
+
 def run_daily_pipeline(progress_callback=None) -> dict[str, object]:
     config = load_config()
     retry_cfg = config.get("retry", {})
@@ -79,7 +107,23 @@ def run_daily_pipeline(progress_callback=None) -> dict[str, object]:
         audio_path = _run_stage("voice", lambda: generate_episode_audio(script, config))
         visual_plan = _run_stage("visuals", lambda: build_visual_plan(outline, config))
         video_path = _run_stage("render", lambda: render_episode_video(audio_path, visual_plan, config))
-        publish_result = _run_stage("publish", lambda: publish_episode(video_path, {"title": script["title"]}, config))
+        render_metadata = _render_fallback_metadata(visual_plan)
+        if render_metadata["render_fallback_used"] and progress_callback:
+            progress_callback("completed", "render", "Completed: render (fallback visuals)")
+
+        if _publish_enabled(config):
+            publish_result = _run_stage("publish", lambda: publish_episode(video_path, {"title": script["title"]}, config))
+            success_message = "Episode published successfully"
+            notify_message = f"Episode published successfully: {script['title']}"
+        else:
+            publish_result = {
+                "status": "skipped",
+                "reason": "youtube_auto_publish_disabled",
+            }
+            if progress_callback:
+                progress_callback("completed", "publish", "Completed: publish (skipped)")
+            success_message = "Episode rendered successfully (publish skipped)"
+            notify_message = f"Episode rendered successfully (publish skipped): {script['title']}"
     except Exception as exc:
         run_logs.log(
             run_date=outline["episode_date"] if outline and "episode_date" in outline else "unknown",
@@ -88,25 +132,27 @@ def run_daily_pipeline(progress_callback=None) -> dict[str, object]:
             message=str(exc),
             payload={"error_type": exc.__class__.__name__},
         )
-        send_run_notification("failure", str(exc), config)
+        _send_notification_safely("failure", str(exc), config)
         raise
 
     run_logs.log(
         run_date=outline["episode_date"],
         stage="publish",
         status="success",
-        message="Episode published successfully",
+        message=success_message,
         payload={
             "title": script["title"],
             "video_path": video_path,
             "publish_result": publish_result,
         },
     )
-    send_run_notification("success", f"Episode published successfully: {script['title']}", config)
-    return {
+    _send_notification_safely("success", notify_message, config)
+    result = {
         "status": "success",
         "run_date": outline["episode_date"],
         "title": script["title"],
         "video_path": video_path,
         "publish_result": publish_result,
     }
+    result.update(render_metadata)
+    return result

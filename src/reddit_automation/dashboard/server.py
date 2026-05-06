@@ -113,38 +113,40 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def _get_config(self):
         try:
-            from reddit_automation.utils.config import load_yaml_file
+            from reddit_automation.utils.config import load_config
             from reddit_automation.utils.paths import CONFIG_DIR
-            import json
+
             path = CONFIG_DIR / "config.yaml"
-            data = load_yaml_file(path)
-            return data
+            return load_config(path)
         except Exception as exc:
             return {"error": str(exc)}
 
     def _update_config(self, updates):
         try:
-            import yaml
+            from reddit_automation.utils.config import (
+                EDITABLE_TOP_LEVEL_KEYS,
+                build_runtime_config,
+                load_yaml_file,
+                validate_config,
+                write_yaml_file,
+            )
             from reddit_automation.utils.paths import CONFIG_DIR
 
-            ALLOWED_KEYS = {
-                "project", "sources", "filters", "comments", "scoring",
-                "hosts", "prompts", "scripting", "render", "publishing",
-                "alerts", "retry", "youtube",
-            }
+            if not isinstance(updates, dict):
+                return {"error": "Config update payload must be a JSON object"}
 
-            unauthorized = set(updates.keys()) - ALLOWED_KEYS
+            unauthorized = set(updates.keys()) - EDITABLE_TOP_LEVEL_KEYS
             if unauthorized:
                 return {"error": f"Unauthorized config keys: {sorted(unauthorized)}"}
 
             path = CONFIG_DIR / "config.yaml"
-            with open(path, "r") as f:
-                current = yaml.safe_load(f) or {}
+            current = load_yaml_file(path)
+            candidate = build_runtime_config(current)
+            for key, value in updates.items():
+                candidate[key] = value
 
-            current.update(updates)
-            with open(path, "w") as f:
-                yaml.dump(current, f, default_flow_style=False)
-
+            validate_config(candidate)
+            write_yaml_file(path, candidate)
             return {"status": "updated"}
         except Exception as exc:
             return {"error": str(exc)}
@@ -160,12 +162,6 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if not srv or not srv.cron_service:
             return {"error": "Cron not connected"}
         return srv.cron_service.toggle()
-
-    def _run_cron(self):
-        srv = self._dashboard_server
-        if not srv or not srv.cron_service:
-            return {"error": "Cron not connected"}
-        return srv.cron_service.run_now()
 
     def _get_run_status(self):
         srv = self._dashboard_server
@@ -222,7 +218,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     state["completed_at"] = time.time()
                 elif result.get("status") == "success":
                     state["status"] = "completed"
-                    state["message"] = f"Completed: {result.get('title', 'pipeline finished')}"
+                    fallback_suffix = " (fallback visuals)" if result.get("render_fallback_used") else ""
+                    state["message"] = f"Completed: {result.get('title', 'pipeline finished')}{fallback_suffix}"
                     state["completed_at"] = time.time()
                 else:
                     state["status"] = "failed"

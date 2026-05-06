@@ -1,14 +1,14 @@
 project:
-  name: reddit-content-automation
   episode_target_minutes: 5
-  primary_lookback_hours: 48
-  fallback_lookback_days: 7
-  candidate_target: 40
   final_pick_count: 3
   backup_pick_count: 2
-  timezone: UTC
 
 sources:
+  source_mode: post_urls
+  # No-key MVP path: cron processes these pasted Reddit thread URLs first.
+  # This takes priority over subreddit bulk fetch and does not require Reddit OAuth credentials.
+  reddit_post_urls:
+    - https://www.reddit.com/r/tifu/comments/rg91mc/tifu_by_telling_airport_tsa_i_had_c4_in_my/
   subreddits:
     - AskReddit
     - AmItheAsshole
@@ -18,9 +18,6 @@ sources:
     - pettyrevenge
     - antiwork
     - greentext
-  fetch_modes:
-    - hot
-    - top
   max_posts_per_subreddit_per_mode: 15
 
 filters:
@@ -33,11 +30,18 @@ filters:
     - nsfw
   exclude_low_context: true
   dedupe_similar_posts: true
-  min_body_or_comment_signal: 1
 
 comments:
   top_n_per_candidate: 5
-  max_selected_comments_per_segment: 2
+
+reddit:
+  client_id: ""
+  client_secret: ""
+  user_agent: Postmortem/0.1 by u/unknown
+  max_retries: 3
+  base_delay_seconds: 2.0
+  min_seconds_between_requests: 2.0
+  max_comment_threads_per_run: 10
 
 scoring:
   weights:
@@ -47,60 +51,80 @@ scoring:
     clarity_after_rewrite: 0.10
     comment_bonus: 0.10
   thresholds:
-    min_reaction_potential: 8
+    min_reaction_potential: 7.5
     min_laugh_factor: 7
     min_overall_score: 7.2
-  use_llm_keep_flag: true
 
 hosts:
   host_1:
     key: host_1
     name: Host 1
-    role: main
-    persona_file: prompts/host_1_persona.txt
-    voice_id: VOICE_ID_1
+    role: story_driver
+    personality: dry setup narrator
+    voice_id: en-US-GuyNeural
+    # ElevenLabs voice ID used when tts.provider=elevenlabs. Adam is a default
+    # ElevenLabs male voice; replace with a cloned/custom voice ID if preferred.
+    elevenlabs_voice_id: pNInz6obpgDQGcFmaJgB
+    # Optional when tts.provider=comfy_qwen_tts: choose a Qwen preset voice
+    # instead of the edge-tts voice_id above. Choices include Ryan, Serena,
+    # Aiden, Dylan, Eric, Ono_Anna, Sohee, Uncle_Fu, Vivian.
+    qwen_voice_id: Ryan
+    voice_instruct: A dry, confident male host voice with crisp podcast pacing.
   host_2:
     key: host_2
     name: Host 2
-    role: adaptive
-    default_persona_file: prompts/host_2_persona.txt
-    adaptive_mode: true
-    voice_id: VOICE_ID_2
+    role: incredulous_reactor
+    personality: sharp skeptical punchline partner
+    voice_id: en-US-AnaNeural
+    # ElevenLabs voice ID used when tts.provider=elevenlabs. Rachel is a default
+    # ElevenLabs female voice; replace with a cloned/custom voice ID if preferred.
+    elevenlabs_voice_id: 21m00Tcm4TlvDq8ikWAM
+    qwen_voice_id: Serena
+    voice_instruct: A skeptical, expressive female co-host voice with sharp comedic timing.
 
-prompts:
-  scoring_system_file: prompts/scoring_system.txt
-  scoring_user_template_file: prompts/scoring_user.txt
-  outline_system_file: prompts/outline_system.txt
-  script_system_file: prompts/script_system.txt
-  title_generation_system_file: prompts/title_system.txt
-  description_generation_system_file: prompts/description_system.txt
+tts:
+  # Active production TTS provider for Postmortem. Requires ELEVENLABS_API_KEY.
+  provider: elevenlabs
+  elevenlabs:
+    api_key_env: ELEVENLABS_API_KEY
+    model_id: eleven_multilingual_v2
+    output_format: mp3_44100_128
+    timeout_seconds: 60
+  # Free local fallback; set provider: edge_tts to use hosts.*.voice_id values.
+  # Set provider: comfy_qwen_tts after ComfyUI-QwenTTS is installed and running.
+  comfy_qwen_tts:
+    base_url: http://127.0.0.1:8188
+    model_size: 0.6B
+    language: English
+    device: auto
+    precision: bf16
+    attention: auto
+    max_new_tokens: 768
+    do_sample: false
+    timeout_seconds: 900
+    poll_interval_seconds: 1.0
+    max_poll_attempts: 900
+    unload_models: false
 
 scripting:
   target_segments: 3
-  allowed_segment_range: [3, 5]
-  cold_open_seconds: 15
-  outro_seconds: 40
-  max_direct_quote_words: 12
-  rewrite_aggressively: true
-  require_host_1_consistency: true
-  host_2_default_mode: grounded
-  host_2_allowed_modes:
-    - grounded
-    - adaptive
 
 render:
-  captions_enabled: true
-  music_bed_enabled: true
-  slide_style: minimal
-  aspect_ratio: 16:9
+  engine: hyperframes
+  slide_style: postmortem_forensic
   resolution: 1920x1080
   fps: 30
+  hyperframes:
+    quality: standard
+    run_validate: true
+    run_inspect: true
 
 publishing:
-  youtube_auto_publish: true
-  generate_thumbnail_prompt: true
+  youtube_auto_publish: false
   default_privacy_status: private
 
 alerts:
-  telegram_on_success: true
-  telegram_on_failure: true
+  telegram_on_success: false
+  telegram_on_failure: false
+  telegram_bot_token: ""
+  telegram_chat_id: ""

@@ -122,3 +122,80 @@ def test_score_candidates_returns_candidates_sorted_by_overall_score_descending(
     scored_candidates = score_candidates(candidates, config)
 
     assert [candidate["reddit_post_id"] for candidate in scored_candidates] == ["higher", "lower"]
+
+
+def test_score_candidates_scores_unscored_candidates_with_builtin_heuristics():
+    config = {
+        "scoring": {
+            "weights": {
+                "reaction_potential": 0.40,
+                "laugh_factor": 0.25,
+                "story_payoff": 0.15,
+                "clarity_after_rewrite": 0.10,
+                "comment_bonus": 0.10,
+            },
+            "thresholds": {
+                "min_reaction_potential": 8,
+                "min_laugh_factor": 7,
+                "min_overall_score": 7.2,
+            },
+        }
+    }
+    candidates = [
+        {
+            "reddit_post_id": "strong",
+            "title": "What is the funniest petty revenge you have ever seen?",
+            "body": "My roommate kept stealing my food, so I relabeled everything with fake ingredient lists until he stopped.",
+            "subreddit": "pettyrevenge",
+            "score": 420,
+            "comment_count": 87,
+            "top_comments": [
+                {"body": "This is beautifully unhinged", "score": 120},
+                {"body": "Petty and effective. Perfect combo.", "score": 95},
+            ],
+        }
+    ]
+
+    scored_candidates = score_candidates(candidates, config)
+
+    assert scored_candidates[0]["reaction_potential"] >= 8
+    assert scored_candidates[0]["laugh_factor"] >= 7
+    assert scored_candidates[0]["overall_score"] >= 7.2
+    assert scored_candidates[0]["keep"] is True
+
+
+def test_score_candidates_rejects_low_signal_unscored_candidates_with_builtin_heuristics():
+    config = {
+        "scoring": {
+            "weights": {
+                "reaction_potential": 0.40,
+                "laugh_factor": 0.25,
+                "story_payoff": 0.15,
+                "clarity_after_rewrite": 0.10,
+                "comment_bonus": 0.10,
+            },
+            "thresholds": {
+                "min_reaction_potential": 8,
+                "min_laugh_factor": 7,
+                "min_overall_score": 7.2,
+            },
+        }
+    }
+    candidates = [
+        {
+            "reddit_post_id": "weak",
+            "title": "Need help",
+            "body": "",
+            "subreddit": "AskReddit",
+            "score": 1,
+            "comment_count": 0,
+            "top_comments": [],
+        }
+    ]
+
+    scored_candidates = score_candidates(candidates, config)
+
+    assert scored_candidates[0]["reaction_potential"] < 8
+    assert scored_candidates[0]["laugh_factor"] < 7
+    assert scored_candidates[0]["overall_score"] < 7.2
+    assert scored_candidates[0]["keep"] is False

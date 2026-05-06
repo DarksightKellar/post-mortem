@@ -73,6 +73,8 @@ def render_video(*, audio_path: str, visual_plan: dict, output_path: str, config
             "-i", audio_path,
             "-c:v", "libx264",
             "-tune", "stillimage",
+            "-vf", f"scale={resolution.replace('x', ':')}:force_original_aspect_ratio=decrease,pad={resolution.replace('x', ':')}:(ow-iw)/2:(oh-ih)/2",
+            "-r", str(fps),
             "-pix_fmt", "yuv420p",
             "-shortest",
             "-c:a", "aac",

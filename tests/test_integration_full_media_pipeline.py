@@ -85,25 +85,22 @@ def test_full_media_pipeline_from_outline_to_render(monkeypatch):
     assert len(tts_calls) > 0
     assert len(stitch_calls) == 1
 
-    # Verify ordering: cold_open lines first, then segment lines, then outro lines
-    first_cold_open = next(i for i, call in enumerate(tts_calls) if "Cold open" in call[1])
-    assert first_cold_open == 0, "Cold open lines should be generated first"
+    cold_open_lines = episode_script["cold_open"]["lines"]
+    assert tts_calls[: len(cold_open_lines)] == [
+        (line["speaker"], line["text"]) for line in cold_open_lines
+    ]
 
     # --- Stage 4: Visuals ---
     visual_plan = build_visual_plan(outline, config)
     assert len(visual_plan["scenes"]) >= len(outline["segments"]) + 1
 
-    # --- Stage 5: Render (stub scene generation + render backend) ---
-    def stub_generate_scene_images(visual_plan, config):
-        return []
-
+    # --- Stage 5: Render (stub HyperFrames render backend) ---
     render_calls = []
 
-    def stub_render_video(*, audio_path, visual_plan, output_path, config, scene_images=None):
+    def stub_render_video(*, audio_path, visual_plan, output_path, config):
         render_calls.append({"audio_path": audio_path, "visual_plan": visual_plan, "output_path": output_path})
         return output_path
 
-    monkeypatch.setattr("reddit_automation.pipeline.render.generate_scene_images", stub_generate_scene_images)
     monkeypatch.setattr("reddit_automation.pipeline.render.render_video", stub_render_video)
 
     video_path = render_episode_video(audio_path, visual_plan, config)

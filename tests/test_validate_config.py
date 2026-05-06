@@ -2,7 +2,7 @@
 
 import pytest
 
-from reddit_automation.utils.config import validate_config, ConfigError
+from reddit_automation.utils.config import build_runtime_config, validate_config, ConfigError
 
 
 class TestValidateConfigProjectSection:
@@ -65,6 +65,33 @@ class TestValidateConfigSourcesSection:
             validate_config(config)
 
 
+    def test_reddit_post_urls_can_replace_subreddits_for_manual_url_ingestion(self):
+        config = _make_minimal()
+        config["sources"] = {"reddit_post_urls": ["https://www.reddit.com/r/AskReddit/comments/abc123/funniest_thing/"]}
+
+        validate_config(config)
+
+    def test_configuring_both_post_urls_and_subreddits_requires_explicit_source_mode(self):
+        config = _make_minimal()
+        config["sources"] = {
+            "reddit_post_urls": ["https://www.reddit.com/r/AskReddit/comments/abc123/funniest_thing/"],
+            "subreddits": ["AskReddit"],
+        }
+
+        with pytest.raises(ConfigError, match="source_mode"):
+            validate_config(config)
+
+    def test_explicit_post_url_source_mode_allows_subreddits_to_stay_as_dormant_defaults(self):
+        config = _make_minimal()
+        config["sources"] = {
+            "source_mode": "post_urls",
+            "reddit_post_urls": ["https://www.reddit.com/r/AskReddit/comments/abc123/funniest_thing/"],
+            "subreddits": ["AskReddit"],
+        }
+
+        validate_config(config)
+
+
 class TestValidateConfigScoringSection:
     """Tests for the scoring section validation."""
 
@@ -125,6 +152,20 @@ class TestValidateConfigHostsSection:
         with pytest.raises(ConfigError, match="voice_id"):
             validate_config(config)
 
+    def test_host_missing_dialogue_profile_fields(self):
+        config = _make_minimal()
+        del config["hosts"]["host_2"]["role"]
+
+        with pytest.raises(ConfigError, match="hosts.host_2.role"):
+            validate_config(config)
+
+    def test_missing_second_host_fails_for_two_host_pipeline(self):
+        config = _make_minimal()
+        del config["hosts"]["host_2"]
+
+        with pytest.raises(ConfigError, match="host_2"):
+            validate_config(config)
+
 
 class TestValidateConfigRenderSection:
     """Tests for the render section validation."""
@@ -168,6 +209,83 @@ class TestValidateConfigApplyDefaults:
         validate_config(config)
         assert config["retry"]["max_retries"] == 5
 
+    def test_runtime_config_includes_authenticated_reddit_fetch_defaults(self):
+        config = build_runtime_config(_make_minimal())
+
+        assert config["reddit"] == {
+            "client_id": "",
+            "client_secret": "",
+            "user_agent": "Postmortem/0.1 by u/unknown",
+            "max_retries": 3,
+            "base_delay_seconds": 2.0,
+            "min_seconds_between_requests": 2.0,
+            "max_comment_threads_per_run": 10,
+        }
+
+    def test_runtime_config_defaults_to_post_url_mode_when_urls_are_configured(self):
+        config = _make_minimal()
+        config["scoring"]["weights"] = {
+            "reaction_potential": 0.40,
+            "laugh_factor": 0.25,
+            "story_payoff": 0.15,
+            "clarity_after_rewrite": 0.10,
+            "comment_bonus": 0.10,
+        }
+        config["sources"] = {
+            "reddit_post_urls": ["https://www.reddit.com/r/AskReddit/comments/abc123/funniest_thing/"],
+        }
+
+        runtime_config = build_runtime_config(config)
+        validate_config(runtime_config)
+
+        assert runtime_config["sources"]["source_mode"] == "post_urls"
+
+    def test_runtime_config_prefers_post_url_mode_when_urls_and_subreddits_are_configured(self):
+        config = _make_minimal()
+        config["scoring"]["weights"] = {
+            "reaction_potential": 0.40,
+            "laugh_factor": 0.25,
+            "story_payoff": 0.15,
+            "clarity_after_rewrite": 0.10,
+            "comment_bonus": 0.10,
+        }
+        config["sources"] = {
+            "reddit_post_urls": ["https://www.reddit.com/r/AskReddit/comments/abc123/funniest_thing/"],
+            "subreddits": ["AskReddit"],
+        }
+
+        runtime_config = build_runtime_config(config)
+        validate_config(runtime_config)
+
+        assert runtime_config["sources"]["source_mode"] == "post_urls"
+
+    def test_runtime_config_defaults_to_edge_tts_with_optional_backend_config(self):
+        config = build_runtime_config(_make_minimal())
+
+        assert config["tts"] == {
+            "provider": "edge_tts",
+            "comfy_qwen_tts": {
+                "base_url": "http://127.0.0.1:8188",
+                "model_size": "0.6B",
+                "language": "English",
+                "device": "auto",
+                "precision": "bf16",
+                "attention": "auto",
+                "max_new_tokens": 768,
+                "do_sample": False,
+                "timeout_seconds": 900,
+                "poll_interval_seconds": 1.0,
+                "max_poll_attempts": 900,
+                "unload_models": False,
+            },
+            "elevenlabs": {
+                "api_key_env": "ELEVENLABS_API_KEY",
+                "model_id": "eleven_multilingual_v2",
+                "output_format": "mp3_44100_128",
+                "timeout_seconds": 60,
+            },
+        }
+
 
 def _make_minimal():
     """Create a minimal valid config for testing."""
@@ -176,8 +294,18 @@ def _make_minimal():
         "sources": {"subreddits": ["AskReddit"]},
         "scoring": {"weights": {"reaction_potential": 0.5, "laugh_factor": 0.5}},
         "hosts": {
-            "host_1": {"name": "Host 1", "voice_id": "voice-1"},
-            "host_2": {"name": "Host 2", "voice_id": "voice-2"},
+            "host_1": {
+                "name": "Host 1",
+                "role": "story_driver",
+                "personality": "dry setup narrator",
+                "voice_id": "voice-1",
+            },
+            "host_2": {
+                "name": "Host 2",
+                "role": "incredulous_reactor",
+                "personality": "skeptical punchline partner",
+                "voice_id": "voice-2",
+            },
         },
         "render": {"resolution": "1920x1080"},
     }

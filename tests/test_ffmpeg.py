@@ -48,6 +48,11 @@ def test_render_video_builds_slideshow_cmd_when_scene_images_provided(monkeypatc
     assert captured_cmds[1][0] == "ffmpeg"
     assert "-f" in captured_cmds[1]
     assert "concat" in captured_cmds[1]
+    assert "-vf" in captured_cmds[1]
+    video_filter = captured_cmds[1][captured_cmds[1].index("-vf") + 1]
+    assert "scale=1920:1080" in video_filter
+    assert "pad=1920:1080" in video_filter
+    assert captured_cmds[1][captured_cmds[1].index("-r") + 1] == "30"
     # Should reference all scene images via the generated list file
     list_file = [c for c in captured_cmds[1] if "img_list.txt" in c]
     assert len(list_file) > 0

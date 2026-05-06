@@ -1,4 +1,42 @@
+from pathlib import Path
+import sys
+
+from reddit_automation.clients.tts_client import TTSClient
 from reddit_automation.pipeline.voice import generate_episode_audio
+
+
+def test_tts_client_uses_configured_host_voice_id(monkeypatch):
+    calls = []
+
+    class FakeCommunicate:
+        def __init__(self, text, voice):
+            calls.append({"text": text, "voice": voice})
+
+        async def save(self, output_path):
+            calls[-1]["output_path"] = output_path
+
+    class FakeEdgeTTS:
+        Communicate = FakeCommunicate
+
+    monkeypatch.setitem(sys.modules, "edge_tts", FakeEdgeTTS)
+    client = TTSClient(
+        {
+            "hosts": {
+                "host_1": {"key": "host_1", "voice_id": "en-US-CustomNarratorNeural"},
+                "host_2": {"key": "host_2", "voice_id": "en-US-CustomReactorNeural"},
+            }
+        }
+    )
+
+    output_path = client.generate("host_2", "Configured voices should be real.")
+
+    assert calls == [
+        {
+            "text": "Configured voices should be real.",
+            "voice": "en-US-CustomReactorNeural",
+            "output_path": output_path,
+        }
+    ]
 
 
 def test_generate_episode_audio_generates_and_stitches_single_segment_line(monkeypatch):
@@ -189,3 +227,55 @@ def test_generate_episode_audio_appends_outro_lines_after_segment_lines(monkeypa
         "/tmp/voice/0002-host_2.wav",
     ]]
     assert audio_path == "/tmp/voice/episode.wav"
+
+
+
+def test_generate_episode_audio_creates_output_dir_before_stitching(monkeypatch, tmp_path):
+    script = {
+        "title": "Placeholder: Funniest threads today",
+        "segments": [
+            {
+                "position": 1,
+                "reddit_post_id": "p1",
+                "source_title": "First story",
+                "subreddit": "AskReddit",
+                "lines": [
+                    {
+                        "speaker": "host_1",
+                        "text": "Setup: First story",
+                    }
+                ],
+            }
+        ],
+    }
+    output_dir = tmp_path / "missing" / "audio"
+    config = {
+        "hosts": {
+            "host_1": {"key": "host_1"},
+        },
+        "output_dir": str(output_dir),
+    }
+
+    class StubTTSClient:
+        def __init__(self, passed_config):
+            assert passed_config == config
+
+        def generate(self, speaker_key, text):
+            return f"/tmp/voice/{speaker_key}.wav"
+
+    parent_exists = {}
+
+    def stub_stitch_audio_clips(audio_paths, output_path="/tmp/voice/episode.wav"):
+        parent_exists["value"] = Path(output_path).parent.exists()
+        return output_path
+
+    monkeypatch.setattr("reddit_automation.pipeline.voice.TTSClient", StubTTSClient)
+    monkeypatch.setattr(
+        "reddit_automation.pipeline.voice.stitch_audio_clips",
+        stub_stitch_audio_clips,
+    )
+
+    audio_path = generate_episode_audio(script, config)
+
+    assert parent_exists == {"value": True}
+    assert audio_path == str(output_dir / "episode_audio.mp3")

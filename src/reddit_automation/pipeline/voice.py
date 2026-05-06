@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from reddit_automation.clients.tts_client import TTSClient
 from reddit_automation.utils.ffmpeg import stitch_audio_clips
 
@@ -25,5 +27,7 @@ def generate_episode_audio(script: dict, config: dict) -> str:
     for line in script.get("outro", {}).get("lines", []):
         audio_paths.append(client.generate(line["speaker"], line["text"]))
 
-    output_path = str(config.get("output_dir", "/tmp")) + "/episode_audio.mp3"
+    output_dir = Path(config.get("output_dir", "/tmp"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = str(output_dir / "episode_audio.mp3")
     return stitch_audio_clips(audio_paths, output_path)

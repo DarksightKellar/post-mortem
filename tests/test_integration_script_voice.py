@@ -68,18 +68,13 @@ def test_script_to_voice_integration_produced_audio_path(monkeypatch):
     # Assert: TTSClient.generate was called for cold_open lines AND segment lines
     assert len(tts_generate_calls) > 0, "TTSClient.generate should have been called"
 
-    # Cold open produces 2 lines (host_1 + host_2) before any segment lines
-    cold_open_count = len(outline["cold_open"].get("lines", [])) if "cold_open" in outline else 0
-    # Actually the outline cold_open doesn't have 'lines' key — script.py creates them.
-    # In the script, cold_open has 2 lines. Each segment has 2 lines.
-    # Expected order: cold_open host_1, cold_open host_2, then segment lines.
-    assert tts_generate_calls[0] == ("host_1", f"Cold open: {outline['cold_open']['hook']}"), \
-        "First TTS call should be cold_open host_1"
-    assert tts_generate_calls[1] == ("host_2", f"Cold open reaction: {outline['cold_open']['hook']}"), \
-        "Second TTS call should be cold_open host_2"
+    cold_open_lines = episode_script["cold_open"]["lines"]
+    assert tts_generate_calls[0] == (cold_open_lines[0]["speaker"], cold_open_lines[0]["text"])
+    assert tts_generate_calls[1] == (cold_open_lines[1]["speaker"], cold_open_lines[1]["text"])
 
-    # Then segment lines
     first_segment = episode_script["segments"][0]
-    expected_seg_start_idx = 2
-    assert tts_generate_calls[expected_seg_start_idx] == ("host_1", f"Setup: {first_segment['source_title']}"), \
-        "TTS call after cold_open should be segment host_1 setup"
+    expected_seg_start_idx = len(cold_open_lines)
+    assert tts_generate_calls[expected_seg_start_idx] == (
+        first_segment["lines"][0]["speaker"],
+        first_segment["lines"][0]["text"],
+    )

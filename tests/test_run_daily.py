@@ -226,6 +226,7 @@ def test_run_daily_pipeline_orchestrates_media_path_through_publish(monkeypatch)
             "render_dir": "/tmp/renders",
         },
         "scripting": {"target_segments": 1},
+        "publishing": {"youtube_auto_publish": True},
     }
     db = object()
     raw_candidates = [{"reddit_post_id": "raw-1"}]
@@ -359,6 +360,7 @@ def test_run_daily_pipeline_orchestrates_media_path_through_publish(monkeypatch)
         "title": script["title"],
         "video_path": video_path,
         "publish_result": publish_result,
+        "render_fallback_used": False,
     }
     assert calls == [
         ("bootstrap_database", config),
@@ -391,6 +393,196 @@ def test_run_daily_pipeline_orchestrates_media_path_through_publish(monkeypatch)
     assert notifications == [
         ("success", f"Episode published successfully: {script['title']}", config)
     ]
+
+
+def test_run_daily_pipeline_skips_publish_when_auto_publish_disabled(monkeypatch):
+    config = {
+        "project": {
+            "final_pick_count": 1,
+            "backup_pick_count": 1,
+            "render_dir": "/tmp/renders",
+        },
+        "scripting": {"target_segments": 1},
+        "publishing": {"youtube_auto_publish": False},
+    }
+    db = object()
+    outline = {"episode_date": "2026-04-03", "segments": [{"position": 1}], "title_angle": "Angle"}
+    script = {"title": "Episode Title", "segments": [{"position": 1}]}
+    visual_plan = {"episode_date": "2026-04-03", "scenes": [{"type": "segment"}]}
+    publish_calls = []
+    logged_entries = []
+    notifications = []
+
+    class StubRunLogRepository:
+        def __init__(self, received_db):
+            assert received_db is db
+
+        def log(self, run_date, stage, status, message, payload=None):
+            logged_entries.append(
+                {
+                    "run_date": run_date,
+                    "stage": stage,
+                    "status": status,
+                    "message": message,
+                    "payload": payload,
+                }
+            )
+
+    monkeypatch.setattr(run_daily_module, "load_config", lambda: config)
+    monkeypatch.setattr(run_daily_module, "bootstrap_database", lambda _config: db)
+    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"reddit_post_id": "raw-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"reddit_post_id": "filtered-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "store_candidates", lambda _c, _db: None, raising=False)
+    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"reddit_post_id": "scored-1", "keep": True}], raising=False)
+    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"reddit_post_id": "selected-1"}], "backups": []}, raising=False)
+    monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _s, _config: outline, raising=False)
+    monkeypatch.setattr(run_daily_module, "write_episode_script", lambda _o, _config: script, raising=False)
+    monkeypatch.setattr(run_daily_module, "generate_episode_audio", lambda _s, _config: "/tmp/audio/episode.wav", raising=False)
+    monkeypatch.setattr(run_daily_module, "build_visual_plan", lambda _o, _config: visual_plan, raising=False)
+    monkeypatch.setattr(run_daily_module, "render_episode_video", lambda _a, _v, _config: "/tmp/renders/2026-04-03.mp4", raising=False)
+    monkeypatch.setattr(run_daily_module, "publish_episode", lambda *_args: publish_calls.append(_args), raising=False)
+    monkeypatch.setattr(run_daily_module, "RunLogRepository", StubRunLogRepository, raising=False)
+    monkeypatch.setattr(
+        run_daily_module,
+        "send_run_notification",
+        lambda status, message, received_config: notifications.append((status, message, received_config)),
+        raising=False,
+    )
+
+    result = run_daily_module.run_daily_pipeline()
+
+    assert publish_calls == []
+    assert result == {
+        "status": "success",
+        "run_date": outline["episode_date"],
+        "title": script["title"],
+        "video_path": "/tmp/renders/2026-04-03.mp4",
+        "publish_result": {
+            "status": "skipped",
+            "reason": "youtube_auto_publish_disabled",
+        },
+        "render_fallback_used": False,
+    }
+    assert logged_entries == [
+        {
+            "run_date": outline["episode_date"],
+            "stage": "publish",
+            "status": "success",
+            "message": "Episode rendered successfully (publish skipped)",
+            "payload": {
+                "title": script["title"],
+                "video_path": "/tmp/renders/2026-04-03.mp4",
+                "publish_result": {
+                    "status": "skipped",
+                    "reason": "youtube_auto_publish_disabled",
+                },
+            },
+        }
+    ]
+    assert notifications == [
+        ("success", f"Episode rendered successfully (publish skipped): {script['title']}", config)
+    ]
+
+
+
+def test_run_daily_pipeline_returns_success_when_success_notification_fails(monkeypatch):
+    config = {
+        "project": {
+            "final_pick_count": 1,
+            "backup_pick_count": 1,
+            "render_dir": "/tmp/renders",
+        },
+        "scripting": {"target_segments": 1},
+        "publishing": {"youtube_auto_publish": False},
+    }
+    db = object()
+    outline = {"episode_date": "2026-04-03", "segments": [{"position": 1}], "title_angle": "Angle"}
+    script = {"title": "Episode Title", "segments": [{"position": 1}]}
+    visual_plan = {"episode_date": "2026-04-03", "scenes": [{"type": "segment"}]}
+    logged_entries = []
+
+    class StubRunLogRepository:
+        def __init__(self, received_db):
+            assert received_db is db
+
+        def log(self, run_date, stage, status, message, payload=None):
+            logged_entries.append(
+                {
+                    "run_date": run_date,
+                    "stage": stage,
+                    "status": status,
+                    "message": message,
+                    "payload": payload,
+                }
+            )
+
+    monkeypatch.setattr(run_daily_module, "load_config", lambda: config)
+    monkeypatch.setattr(run_daily_module, "bootstrap_database", lambda _config: db)
+    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"reddit_post_id": "raw-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"reddit_post_id": "filtered-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "store_candidates", lambda _c, _db: None, raising=False)
+    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"reddit_post_id": "scored-1", "keep": True}], raising=False)
+    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"reddit_post_id": "selected-1"}], "backups": []}, raising=False)
+    monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _s, _config: outline, raising=False)
+    monkeypatch.setattr(run_daily_module, "write_episode_script", lambda _o, _config: script, raising=False)
+    monkeypatch.setattr(run_daily_module, "generate_episode_audio", lambda _s, _config: "/tmp/audio/episode.wav", raising=False)
+    monkeypatch.setattr(run_daily_module, "build_visual_plan", lambda _o, _config: visual_plan, raising=False)
+    monkeypatch.setattr(run_daily_module, "render_episode_video", lambda _a, _v, _config: "/tmp/renders/2026-04-03.mp4", raising=False)
+    monkeypatch.setattr(run_daily_module, "RunLogRepository", StubRunLogRepository, raising=False)
+    monkeypatch.setattr(
+        run_daily_module,
+        "send_run_notification",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("telegram broke")),
+        raising=False,
+    )
+
+    result = run_daily_module.run_daily_pipeline()
+
+    assert result["status"] == "success"
+    assert result["title"] == script["title"]
+    assert logged_entries[0]["status"] == "success"
+
+
+def test_run_daily_pipeline_includes_render_fallback_metadata_in_success_result(monkeypatch):
+    config = {
+        "project": {
+            "final_pick_count": 1,
+            "backup_pick_count": 1,
+            "render_dir": "/tmp/renders",
+        },
+        "scripting": {"target_segments": 1},
+        "publishing": {"youtube_auto_publish": False},
+    }
+
+    outline = {"episode_date": "2026-04-03", "segments": [{"position": 1}], "title_angle": "Angle"}
+    script = {"title": "Episode Title", "segments": [{"position": 1}]}
+    visual_plan = {"episode_date": "2026-04-03", "scenes": [{"type": "segment"}]}
+
+    monkeypatch.setattr(run_daily_module, "load_config", lambda: config)
+    monkeypatch.setattr(run_daily_module, "bootstrap_database", lambda _config: object())
+    monkeypatch.setattr(run_daily_module, "RunLogRepository", lambda _db: type("RunLogs", (), {"log": lambda *args, **kwargs: None})(), raising=False)
+    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"reddit_post_id": "raw-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"reddit_post_id": "filtered-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "store_candidates", lambda _c, _db: None, raising=False)
+    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"reddit_post_id": "scored-1", "keep": True}], raising=False)
+    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"reddit_post_id": "selected-1"}], "backups": []}, raising=False)
+    monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _s, _config: outline, raising=False)
+    monkeypatch.setattr(run_daily_module, "write_episode_script", lambda _o, _config: script, raising=False)
+    monkeypatch.setattr(run_daily_module, "generate_episode_audio", lambda _s, _config: "/tmp/audio/episode.wav", raising=False)
+    monkeypatch.setattr(run_daily_module, "build_visual_plan", lambda _o, _config: visual_plan, raising=False)
+
+    def fake_render_episode_video(_audio_path, received_visual_plan, _config):
+        received_visual_plan["render_fallback_used"] = True
+        received_visual_plan["render_fallback_reason"] = "fal unavailable"
+        return "/tmp/renders/2026-04-03.mp4"
+
+    monkeypatch.setattr(run_daily_module, "render_episode_video", fake_render_episode_video, raising=False)
+    monkeypatch.setattr(run_daily_module, "send_run_notification", lambda *_args: None, raising=False)
+
+    result = run_daily_module.run_daily_pipeline()
+
+    assert result["render_fallback_used"] is True
+    assert result["render_fallback_reason"] == "fal unavailable"
 
 
 def test_run_daily_pipeline_returns_no_episode_when_selection_is_empty(tmp_path, monkeypatch):
@@ -510,7 +702,10 @@ def test_run_daily_pipeline_logs_final_publish_result(tmp_path, monkeypatch):
         "storage": {
             "db_path": str(db_path),
             "schema_path": str(schema_path),
-        }
+        },
+        "publishing": {
+            "youtube_auto_publish": True,
+        },
     }
     outline = {"episode_date": "2026-04-03", "segments": []}
     script = {"title": "Episode Title", "segments": []}
@@ -542,6 +737,7 @@ def test_run_daily_pipeline_logs_final_publish_result(tmp_path, monkeypatch):
         "title": script["title"],
         "video_path": video_path,
         "publish_result": publish_result,
+        "render_fallback_used": False,
     }
 
     with sqlite3.connect(db_path) as conn:
@@ -570,7 +766,8 @@ def test_run_daily_pipeline_logs_final_publish_result(tmp_path, monkeypatch):
     ]
 
 
-def test_run_daily_pipeline_logs_failure_and_reraises_exception(tmp_path, monkeypatch):
+
+def test_run_daily_pipeline_failure_logs_before_notifying(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
     schema_path = tmp_path / "schema.sql"
     write_test_schema(schema_path)
@@ -579,7 +776,15 @@ def test_run_daily_pipeline_logs_failure_and_reraises_exception(tmp_path, monkey
         "storage": {
             "db_path": str(db_path),
             "schema_path": str(schema_path),
-        }
+        },
+        "project": {
+            "episode_date": "2026-04-03",
+            "final_pick_count": 1,
+            "backup_pick_count": 1,
+        },
+        "publishing": {
+            "youtube_auto_publish": True,
+        },
     }
     outline = {"episode_date": "2026-04-03", "segments": []}
     script = {"title": "Episode Title", "segments": []}
@@ -643,6 +848,41 @@ def test_run_daily_pipeline_logs_failure_and_reraises_exception(tmp_path, monkey
         ("log", "failure", "upload failed"),
         ("notify", "failure", "upload failed", config),
     ]
+
+
+
+def test_run_daily_pipeline_preserves_original_error_when_failure_notification_fails(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    schema_path = tmp_path / "schema.sql"
+    write_test_schema(schema_path)
+
+    config = {
+        "storage": {
+            "db_path": str(db_path),
+            "schema_path": str(schema_path),
+        },
+        "retry": {
+            "max_retries": 1,
+            "base_delay": 0.0,
+        },
+    }
+
+    monkeypatch.setattr(run_daily_module, "load_config", lambda: config, raising=False)
+    monkeypatch.setattr(
+        run_daily_module,
+        "fetch_candidates",
+        lambda _config: (_ for _ in ()).throw(ConnectionError("permanent Reddit outage")),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        run_daily_module,
+        "send_run_notification",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("telegram broke")),
+        raising=False,
+    )
+
+    with pytest.raises(ConnectionError, match="permanent Reddit outage"):
+        run_daily_module.run_daily_pipeline()
 
 
 def test_run_daily_pipeline_retries_on_transient_fetch_error(tmp_path, monkeypatch):
@@ -861,6 +1101,7 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
             "slide_style": "minimal",
         },
         "publishing": {
+            "youtube_auto_publish": True,
             "default_privacy_status": "private",
         },
         "alerts": {
@@ -924,7 +1165,6 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
 
     tts_calls = []
     stitch_calls = []
-    rendered_scene_prompts = []
     render_calls = []
     notification_requests = []
 
@@ -952,23 +1192,12 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
         output.write_bytes(b"stitched-audio")
         return str(output)
 
-    class StubFalClient:
-        def __init__(self, api_key=None, config=None):
-            self.config = config
-
-        def generate(self, prompt, output_path, max_retries=30, poll_interval=2.0):
-            rendered_scene_prompts.append(prompt)
-            output_file = tmp_path / output_path.split("/")[-1]
-            output_file.write_bytes(b"image")
-            return str(output_file)
-
-    def stub_render_video(*, audio_path, visual_plan, output_path, config, scene_images=None):
+    def stub_render_video(*, audio_path, visual_plan, output_path, config):
         render_calls.append(
             {
                 "audio_path": audio_path,
                 "visual_plan": visual_plan,
                 "output_path": output_path,
-                "scene_images": scene_images,
             }
         )
 
@@ -989,7 +1218,6 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
     monkeypatch.setattr("reddit_automation.clients.llm_client.LLMClient.complete_json", stub_llm_complete)
     monkeypatch.setattr("reddit_automation.clients.tts_client.TTSClient.generate", stub_tts_generate)
     monkeypatch.setattr("reddit_automation.pipeline.voice.stitch_audio_clips", stub_stitch_audio_clips)
-    monkeypatch.setattr("reddit_automation.pipeline.generate_scenes.FalClient", StubFalClient)
     monkeypatch.setattr("reddit_automation.pipeline.render.render_video", stub_render_video)
     monkeypatch.setattr(
         run_daily_module,
@@ -1010,8 +1238,8 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
     assert result["publish_result"]["video_id"] == "abc123"
     assert tts_calls, "voice stage should synthesize dialogue"
     assert stitch_calls, "voice stage should stitch generated clips"
-    assert rendered_scene_prompts, "render stage should generate scene prompts"
-    assert render_calls[0]["scene_images"], "render stage should receive generated scene images"
+    assert render_calls, "render stage should invoke HyperFrames backend"
+    assert render_calls[0]["visual_plan"]["scenes"], "render stage should pass planned scenes to HyperFrames"
     assert len(notification_requests) == 1
 
     with sqlite3.connect(db_path) as conn:
