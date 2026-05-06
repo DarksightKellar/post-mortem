@@ -153,6 +153,7 @@ def _build_index_html(
     scenes = _normalized_scenes(visual_plan)
     scene_count = len(scenes)
     scene_duration = duration_seconds / scene_count
+    scene_clip_duration = max(scene_duration - 0.001, scene_duration * 0.99)
     transition_duration = min(0.45, max(0.18, scene_duration * 0.18))
 
     scene_markup = []
@@ -165,7 +166,7 @@ def _build_index_html(
         scene_text = html.escape(str(scene.get("text") or scene.get("visual_note") or visual_plan.get("title") or "Postmortem"))
         scene_markup.append(
             f"""
-      <section id="scene-{index}" class="scene scene-{index} clip" data-start="{_format_seconds(start)}" data-duration="{_format_seconds(scene_duration)}" data-track-index="0">
+      <section id="scene-{index}" class="scene scene-{index} clip" data-start="{_format_seconds(start)}" data-duration="{_format_seconds(scene_clip_duration)}" data-track-index="0">
         <div class="scene-content">
           <div class="eyebrow">{scene_type}</div>
           <h1>{scene_text}</h1>
@@ -197,6 +198,7 @@ def _build_index_html(
     animation_lines.append(
         f'tl.to("#scene-{scene_count} .scene-content", {{ autoAlpha: 0, duration: 0.45, ease: "power2.in" }}, {_format_seconds(final_fade_start)});'
     )
+    animation_script = "\n    ".join(animation_lines)
 
     return f"""<!doctype html>
 <html lang="en">
@@ -263,13 +265,13 @@ def _build_index_html(
       text-transform: uppercase;
     }}
     h1 {{
-      max-width: 13ch;
+      max-width: min(22ch, 92%);
       margin: 0;
       color: var(--pm-bone);
       font-family: "Space Grotesk", sans-serif;
-      font-size: clamp(34px, 8vw, 120px);
-      line-height: 0.9;
-      letter-spacing: -0.075em;
+      font-size: clamp(28px, 5.7vw, 84px);
+      line-height: 0.92;
+      letter-spacing: -0.055em;
       text-wrap: balance;
       text-shadow: 0 12px 48px rgba(255, 77, 46, 0.26);
     }}
@@ -280,7 +282,7 @@ def _build_index_html(
       background: rgba(21, 27, 35, 0.9);
       color: var(--pm-slate);
       font-family: "Newsreader", serif;
-      font-size: clamp(16px, 2.5vw, 38px);
+      font-size: clamp(14px, 2vw, 26px);
       line-height: 1.12;
     }}
     .transition-wipe {{
@@ -302,7 +304,7 @@ def _build_index_html(
   <script>
     window.__timelines = window.__timelines || {{}};
     const tl = gsap.timeline({{ paused: true }});
-    {'\n    '.join(animation_lines)}
+    {animation_script}
     window.__timelines["root"] = tl;
   </script>
 </body>

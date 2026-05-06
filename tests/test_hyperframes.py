@@ -1,7 +1,8 @@
+import re
 import subprocess
 from pathlib import Path
 
-from reddit_automation.utils.hyperframes import render_video
+from reddit_automation.utils.hyperframes import _build_index_html, render_video
 
 
 def test_render_video_builds_hyperframes_composition_and_runs_quality_gates(monkeypatch, tmp_path):
@@ -80,6 +81,59 @@ def test_render_video_builds_hyperframes_composition_and_runs_quality_gates(monk
     assert calls[-1]["cmd"][calls[-1]["cmd"].index("--quality") + 1] == "draft"
 
 
+def test_render_video_avoids_fractional_scene_clip_overlaps_for_hyperframes_lint():
+    html = _build_index_html(
+        audio_src="audio.wav",
+        visual_plan={
+            "title": "Fractional timing smoke",
+            "scenes": [
+                {"type": "title_card", "text": "One"},
+                {"type": "segment", "text": "Two"},
+                {"type": "payoff", "text": "Three"},
+            ],
+        },
+        duration_seconds=3.2,
+        width=1280,
+        height=720,
+    )
+
+    scene_timings = [
+        (float(start), float(duration))
+        for start, duration in re.findall(
+            r'class="scene scene-\d+ clip" data-start="([^"]+)" data-duration="([^"]+)"',
+            html,
+        )
+    ]
+
+    assert len(scene_timings) == 3
+    for index in range(len(scene_timings) - 1):
+        current_start, duration = scene_timings[index]
+        next_start, _ = scene_timings[index + 1]
+        assert current_start + duration <= next_start
+
+
+def test_render_video_uses_bounded_typography_for_generated_long_scene_text():
+    html = _build_index_html(
+        audio_src="audio.wav",
+        visual_plan={
+            "title": "Long generated scene smoke",
+            "scenes": [
+                {
+                    "type": "segment",
+                    "text": "HyperFrames builds HTML, validates it, inspects layout, then renders MP4.",
+                },
+            ],
+        },
+        duration_seconds=3.2,
+        width=1280,
+        height=720,
+    )
+
+    assert "max-width: min(22ch, 92%);" in html
+    assert "font-size: clamp(28px, 5.7vw, 84px);" in html
+    assert "font-size: clamp(14px, 2vw, 26px);" in html
+
+
 def test_render_video_uses_responsive_spacing_for_low_resolution_compositions(monkeypatch, tmp_path):
     audio_path = tmp_path / "episode.wav"
     audio_path.write_bytes(b"fake audio")
@@ -110,6 +164,6 @@ def test_render_video_uses_responsive_spacing_for_low_resolution_compositions(mo
 
     assert "padding: clamp(24px, 5vw, 96px);" in html
     assert "gap: clamp(10px, 1.8vw, 30px);" in html
-    assert "font-size: clamp(34px, 8vw, 120px);" in html
-    assert "font-size: clamp(16px, 2.5vw, 38px);" in html
+    assert "font-size: clamp(28px, 5.7vw, 84px);" in html
+    assert "font-size: clamp(14px, 2vw, 26px);" in html
     assert '.body-card", { autoAlpha: 0, x: -' not in html
