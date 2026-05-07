@@ -168,5 +168,6 @@ def test_config_update_persists_optional_fields_and_lists(monkeypatch, tmp_path)
 
 
 def test_index_html_uses_root_api_path():
-    html = Path("/home/kel/projects/reddit-content-automation/src/reddit_automation/dashboard/template.html").read_text(encoding="utf-8")
+    template_path = Path(__file__).resolve().parents[1] / "src/reddit_automation/dashboard/template.html"
+    html = template_path.read_text(encoding="utf-8")
     assert "const API = '/api';" in html

@@ -4,7 +4,7 @@ from reddit_automation.utils.config import load_config
 
 
 def test_load_config_reads_yaml_mapping_from_explicit_path():
-    config_path = Path("/home/kel/projects/reddit-content-automation/config/config.yaml")
+    config_path = Path(__file__).resolve().parents[1] / "config/config.yaml"
 
     config = load_config(config_path)
 

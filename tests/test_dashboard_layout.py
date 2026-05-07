@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-TEMPLATE_PATH = Path("/home/kel/projects/reddit-content-automation/src/reddit_automation/dashboard/template.html")
+TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "src/reddit_automation/dashboard/template.html"
 
 
 def test_index_html_has_hermes_like_shell_structure():

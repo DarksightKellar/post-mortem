@@ -4,7 +4,7 @@ This setup is for Kelvin's local machine:
 
 - WSL2 Ubuntu 24.04
 - AMD Radeon RX 7900 XT
-- Reddit automation project: `/home/kel/projects/reddit-content-automation`
+- Reddit automation project: `/home/kel/projects/postmortem`
 - ComfyUI target URL: `http://127.0.0.1:8188`
 
 The correct path is AMD ROCm on WSL plus a manual ComfyUI install. Do not use the NVIDIA ComfyUI setup path.
@@ -151,7 +151,7 @@ If these names are missing, ComfyUI-QwenTTS did not load correctly or an audio s
 Edit:
 
 ```text
-/home/kel/projects/reddit-content-automation/config/config.yaml
+/home/kel/projects/postmortem/config/config.yaml
 ```
 
 Change:
@@ -201,7 +201,7 @@ hosts:
 From the Reddit project:
 
 ```bash
-cd /home/kel/projects/reddit-content-automation
+cd /home/kel/projects/postmortem
 source .venv/bin/activate
 
 python - <<'PY'
