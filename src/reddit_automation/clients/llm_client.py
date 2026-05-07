@@ -57,7 +57,7 @@ class LLMClient:
         "boss",
         "neighbor",
     )
-    COMEDY_SUBREDDITS = {
+    COMEDY_COMMUNITIES = {
         "askreddit",
         "amitheasshole",
         "tifu",
@@ -77,7 +77,7 @@ class LLMClient:
 
         title = (payload.get("title") or "").strip()
         body = (payload.get("body") or "").strip()
-        subreddit = (payload.get("subreddit") or "").strip().lower()
+        source_community = (payload.get("source_community") or "").strip().lower()
         comments = payload.get("comments") or []
         score = max(float(payload.get("score") or 0), 0.0)
         comment_count = max(float(payload.get("comment_count") or 0), 0.0)
@@ -85,7 +85,7 @@ class LLMClient:
         comment_bodies = " ".join((comment.get("body") or "") for comment in comments)
         combined_text = " ".join(part for part in (title, body, comment_bodies) if part)
         text_length = len(combined_text)
-        subreddit_bonus = 0.6 if subreddit in self.COMEDY_SUBREDDITS else 0.0
+        community_bonus = 0.6 if source_community in self.COMEDY_COMMUNITIES else 0.0
         score_signal = min(log10(score + 1.0) * 2.2, 3.2)
         comment_signal = min(log10(comment_count + 1.0) * 1.8, 2.4)
         body_signal = min(len(body) / 120.0, 2.0)
@@ -96,10 +96,10 @@ class LLMClient:
         punctuation_signal = 0.3 if any(mark in title for mark in ("?", "!")) else 0.0
 
         reaction_potential = _clamp_score(
-            2.2 + score_signal + (comment_signal * 0.7) + (reaction_hits * 0.55) + subreddit_bonus + punctuation_signal
+            2.2 + score_signal + (comment_signal * 0.7) + (reaction_hits * 0.55) + community_bonus + punctuation_signal
         )
         laugh_factor = _clamp_score(
-            1.8 + (laugh_hits * 1.0) + (comment_signal * 0.5) + (comment_quality_signal * 0.35) + subreddit_bonus
+            1.8 + (laugh_hits * 1.0) + (comment_signal * 0.5) + (comment_quality_signal * 0.35) + community_bonus
         )
         story_payoff = _clamp_score(
             2.0 + body_signal + (story_hits * 0.65) + (comment_signal * 0.45) + min(text_length / 220.0, 1.8)

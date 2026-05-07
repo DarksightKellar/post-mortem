@@ -20,17 +20,17 @@ def test_write_episode_script_returns_segment_skeletons_from_outline_segments():
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "First story",
-                    "subreddit": "AskReddit",
+                    "source_community": "AskReddit",
                 },
             },
             {
                 "position": 2,
                 "source": {
-                    "reddit_post_id": "p2",
+                    "candidate_id": "p2",
                     "title": "Second story",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                 },
             },
         ],
@@ -42,17 +42,17 @@ def test_write_episode_script_returns_segment_skeletons_from_outline_segments():
     assert [
         {
             "position": segment["position"],
-            "reddit_post_id": segment["reddit_post_id"],
+            "candidate_id": segment["candidate_id"],
         }
         for segment in episode_script["segments"]
     ] == [
         {
             "position": 1,
-            "reddit_post_id": "p1",
+            "candidate_id": "p1",
         },
         {
             "position": 2,
-            "reddit_post_id": "p2",
+            "candidate_id": "p2",
         },
     ]
 
@@ -65,9 +65,9 @@ def test_write_episode_script_adds_story_derived_host_lines_to_each_segment():
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "First story",
-                    "subreddit": "AskReddit",
+                    "source_community": "AskReddit",
                     "summary": "A lunch prank blew up the office.",
                 },
             }
@@ -106,9 +106,9 @@ def test_write_episode_script_condenses_long_body_instead_of_reading_raw_post_tw
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU by telling TSA I had C4 in my lunchbox",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": long_body,
                 },
             }
@@ -149,9 +149,9 @@ def test_write_episode_script_skips_throwaway_leads_and_edit_notes_when_picking_
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU by telling TSA I had C4 in my lunchbox.",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": (
                         "Yikes! "
                         "I packed a lunchbox with preworkout before my airport shift. "
@@ -200,9 +200,9 @@ def test_write_episode_script_rewrites_known_c4_airport_story_as_a_treatment_not
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU: By telling airport TSA I had C4 in my lunchbox.",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": body,
                 },
             }
@@ -245,9 +245,9 @@ def test_write_episode_script_tells_known_c4_story_in_scenes_not_labels():
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU: By telling airport TSA I had C4 in my lunchbox.",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": body,
                     "top_comments": [
                         {
@@ -320,9 +320,9 @@ def test_write_episode_script_gives_c4_hosts_distinct_comic_roles():
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU: By telling airport TSA I had C4 in my lunchbox.",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": body,
                     "top_comments": [
                         {
@@ -376,9 +376,9 @@ def test_write_episode_script_builds_c4_story_as_call_and_response_banter():
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU: By telling airport TSA I had C4 in my lunchbox.",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": body,
                 },
             }
@@ -430,9 +430,9 @@ def test_write_episode_script_makes_hosts_answer_each_other_not_trade_monologues
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU: By telling airport TSA I had C4 in my lunchbox.",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": body,
                     "top_comments": [
                         {
@@ -499,9 +499,9 @@ def test_write_episode_script_uses_comment_reaction_as_a_beat_when_available():
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU by telling TSA I had C4 in my lunchbox",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": "I accidentally made airport security think my preworkout was an explosive.",
                     "top_comments": [
                         {
@@ -541,9 +541,9 @@ def test_write_episode_script_adds_cold_open_lines_without_stage_label_prefixes(
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "First story",
-                    "subreddit": "AskReddit",
+                    "source_community": "AskReddit",
                 },
             }
         ],
@@ -577,17 +577,17 @@ def test_write_episode_script_copies_source_title_and_subreddit_to_each_segment(
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "First story",
-                    "subreddit": "AskReddit",
+                    "source_community": "AskReddit",
                 },
             },
             {
                 "position": 2,
                 "source": {
-                    "reddit_post_id": "p2",
+                    "candidate_id": "p2",
                     "title": "Second story",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                 },
             },
         ],
@@ -599,23 +599,23 @@ def test_write_episode_script_copies_source_title_and_subreddit_to_each_segment(
     assert [
         {
             "position": segment["position"],
-            "reddit_post_id": segment["reddit_post_id"],
+            "candidate_id": segment["candidate_id"],
             "source_title": segment["source_title"],
-            "subreddit": segment["subreddit"],
+            "source_community": segment["source_community"],
         }
         for segment in episode_script["segments"]
     ] == [
         {
             "position": 1,
-            "reddit_post_id": "p1",
+            "candidate_id": "p1",
             "source_title": "First story",
-            "subreddit": "AskReddit",
+            "source_community": "AskReddit",
         },
         {
             "position": 2,
-            "reddit_post_id": "p2",
+            "candidate_id": "p2",
             "source_title": "Second story",
-            "subreddit": "tifu",
+            "source_community": "tifu",
         },
     ]
 
@@ -666,9 +666,9 @@ def test_write_episode_script_uses_configured_host_profiles_to_shape_dialogue():
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "TIFU: By telling airport TSA I had C4 in my lunchbox.",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "body": body,
                 },
             }

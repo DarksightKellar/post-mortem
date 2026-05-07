@@ -23,7 +23,7 @@ def _make_submission(reddit_id, subreddit, title, body, comments, created_utc=10
     """Build a minimal Reddit submission dict for the RedditClient test data path."""
     return {
         "id": reddit_id,
-        "subreddit": subreddit,
+        "source_community": subreddit,
         "title": title,
         "selftext": body,
         "url": f"https://reddit.com/r/{subreddit}/posts/{reddit_id}",
@@ -128,23 +128,23 @@ def test_full_data_ingestion_chain(tmp_path, monkeypatch):
     # 6 submissions normalized to 6 candidates with top_comments
     assert len(raw) == 6
     for candidate in raw:
-        assert "reddit_post_id" in candidate
+        assert "candidate_id" in candidate
         assert "top_comments" in candidate
         assert "title" in candidate
-        assert "subreddit" in candidate
+        assert "source_community" in candidate
 
     # --- Stage 2: Filter ---
     survived = filter_candidates(raw, config)
     # post_2 banned (election), post_5 banned (nsfw), post_6 dedup of post_3
     # post_4 body + comments rich enough, post_1 rich enough
     # We expect post_1, post_3, post_4 to survive = 3
-    survivor_ids = [c["reddit_post_id"] for c in survived]
-    assert "post_1" in survivor_ids, "post_1 should survive filtering"
-    assert "post_3" in survivor_ids, "post_3 should survive filtering"
-    assert "post_4" in survivor_ids, "post_4 should survive filtering"
-    assert "post_2" not in survivor_ids, "post_2 should be filtered (politics)"
-    assert "post_5" not in survivor_ids, "post_5 should be filtered (nsfw)"
-    assert "post_6" not in survivor_ids, "post_6 should be deduped"
+    survivor_ids = [c["candidate_id"] for c in survived]
+    assert "reddit:post_1" in survivor_ids, "post_1 should survive filtering"
+    assert "reddit:post_3" in survivor_ids, "post_3 should survive filtering"
+    assert "reddit:post_4" in survivor_ids, "post_4 should survive filtering"
+    assert "reddit:post_2" not in survivor_ids, "post_2 should be filtered (politics)"
+    assert "reddit:post_5" not in survivor_ids, "post_5 should be filtered (nsfw)"
+    assert "reddit:post_6" not in survivor_ids, "post_6 should be deduped"
     assert len(survived) == 3
 
     # --- Stage 3: Store ---

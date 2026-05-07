@@ -13,19 +13,19 @@ def _make_minimal_selected_candidates():
     return {
         "primary": [
             {
-                "reddit_post_id": "post_1",
+                "candidate_id": "post_1",
                 "title": "AITA for leaving my own birthday dinner?",
-                "subreddit": "AmItheAsshole",
+                "source_community": "AmItheAsshole",
             },
             {
-                "reddit_post_id": "post_2",
+                "candidate_id": "post_2",
                 "title": "TIFU by sending a complaint to the wrong email.",
-                "subreddit": "tifu",
+                "source_community": "tifu",
             },
             {
-                "reddit_post_id": "post_3",
+                "candidate_id": "post_3",
                 "title": "My boss fired me for refusing unpaid overtime.",
-                "subreddit": "antiwork",
+                "source_community": "antiwork",
             },
         ],
         "backups": [],

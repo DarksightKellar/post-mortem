@@ -91,8 +91,24 @@ class TestValidateConfigSourcesSection:
 
         validate_config(config)
 
+    def test_bluesky_source_mode_can_replace_reddit_sources(self):
+        config = _make_minimal()
+        config["sources"] = {
+            "source_mode": "bluesky",
+            "bluesky_post_urls": ["https://bsky.app/profile/alice.example/post/3kabc"],
+        }
+
+        validate_config(config)
+
+    def test_bluesky_source_mode_requires_bluesky_post_urls(self):
+        config = _make_minimal()
+        config["sources"] = {"source_mode": "bluesky"}
+
+        with pytest.raises(ConfigError, match="bluesky_post_urls"):
+            validate_config(config)
 
 class TestValidateConfigScoringSection:
+
     """Tests for the scoring section validation."""
 
     def test_missing_scoring_section(self):

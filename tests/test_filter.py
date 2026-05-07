@@ -11,7 +11,7 @@ def test_filter_candidates_rejects_candidate_with_banned_term():
     }
     raw = [
         {
-            'reddit_post_id': '1',
+            'candidate_id': '1',
             'subreddit': 'tifu',
             'title': 'This turned into porn somehow',
             'body': '',

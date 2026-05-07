@@ -7,9 +7,11 @@ from reddit_automation.pipeline import run_daily as run_daily_module
 
 
 RUN_DAILY_TEST_SCHEMA = """
-CREATE TABLE reddit_candidates (
-    reddit_post_id TEXT PRIMARY KEY,
-    subreddit TEXT NOT NULL,
+CREATE TABLE source_candidates (
+    candidate_id TEXT PRIMARY KEY,
+    source TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    source_community TEXT NOT NULL,
     title TEXT NOT NULL,
     body TEXT NOT NULL DEFAULT '',
     url TEXT NOT NULL,
@@ -22,7 +24,7 @@ CREATE TABLE reddit_candidates (
 );
 CREATE TABLE candidate_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    reddit_post_id TEXT NOT NULL,
+    candidate_id TEXT NOT NULL,
     comment_id TEXT NOT NULL UNIQUE,
     body TEXT NOT NULL,
     score INTEGER NOT NULL DEFAULT 0,
@@ -64,8 +66,8 @@ def test_run_daily_pipeline_stores_only_filtered_survivors(tmp_path, monkeypatch
 
     raw_candidates = [
         {
-            "reddit_post_id": "keep-1",
-            "subreddit": "AskReddit",
+            "candidate_id": "keep-1",
+            "source_community": "AskReddit",
             "title": "Office lunch disaster",
             "body": "Someone microwaved fish and everyone panicked.",
             "url": "https://reddit.com/r/AskReddit/comments/keep1",
@@ -77,8 +79,8 @@ def test_run_daily_pipeline_stores_only_filtered_survivors(tmp_path, monkeypatch
             "top_comments": [],
         },
         {
-            "reddit_post_id": "drop-1",
-            "subreddit": "tifu",
+            "candidate_id": "drop-1",
+            "source_community": "tifu",
             "title": "This turned into porn somehow",
             "body": "",
             "url": "https://reddit.com/r/tifu/comments/drop1",
@@ -111,7 +113,7 @@ def test_run_daily_pipeline_stores_only_filtered_survivors(tmp_path, monkeypatch
 
     with sqlite3.connect(db_path) as conn:
         rows = conn.execute(
-            "SELECT reddit_post_id FROM reddit_candidates ORDER BY reddit_post_id"
+            "SELECT candidate_id FROM source_candidates ORDER BY candidate_id"
         ).fetchall()
 
     assert rows == [("keep-1",)]
@@ -136,8 +138,8 @@ def test_run_daily_pipeline_stores_comments_for_surviving_candidates(tmp_path, m
 
     raw_candidates = [
         {
-            "reddit_post_id": "keep-1",
-            "subreddit": "AskReddit",
+            "candidate_id": "keep-1",
+            "source_community": "AskReddit",
             "title": "Office lunch disaster",
             "body": "Someone microwaved fish and everyone panicked.",
             "url": "https://reddit.com/r/AskReddit/comments/keep1",
@@ -157,8 +159,8 @@ def test_run_daily_pipeline_stores_comments_for_surviving_candidates(tmp_path, m
             ],
         },
         {
-            "reddit_post_id": "drop-1",
-            "subreddit": "tifu",
+            "candidate_id": "drop-1",
+            "source_community": "tifu",
             "title": "This turned into porn somehow",
             "body": "",
             "url": "https://reddit.com/r/tifu/comments/drop1",
@@ -200,7 +202,7 @@ def test_run_daily_pipeline_stores_comments_for_surviving_candidates(tmp_path, m
     with sqlite3.connect(db_path) as conn:
         rows = conn.execute(
             """
-            SELECT reddit_post_id, comment_id, body, score, author, created_utc
+            SELECT candidate_id, comment_id, body, score, author, created_utc
             FROM candidate_comments
             ORDER BY comment_id
             """
@@ -229,10 +231,10 @@ def test_run_daily_pipeline_orchestrates_media_path_through_publish(monkeypatch)
         "publishing": {"youtube_auto_publish": True},
     }
     db = object()
-    raw_candidates = [{"reddit_post_id": "raw-1"}]
-    filtered_candidates = [{"reddit_post_id": "filtered-1"}]
-    scored_candidates = [{"reddit_post_id": "scored-1", "keep": True}]
-    selected_items = {"primary": [{"reddit_post_id": "selected-1"}], "backups": []}
+    raw_candidates = [{"candidate_id": "raw-1"}]
+    filtered_candidates = [{"candidate_id": "filtered-1"}]
+    scored_candidates = [{"candidate_id": "scored-1", "keep": True}]
+    selected_items = {"primary": [{"candidate_id": "selected-1"}], "backups": []}
     outline = {"episode_date": "2026-04-03", "segments": [{"position": 1}], "title_angle": "Angle"}
     script = {"title": "Episode Title", "segments": [{"position": 1}]}
     audio_path = "/tmp/audio/episode.wav"
@@ -430,11 +432,11 @@ def test_run_daily_pipeline_skips_publish_when_auto_publish_disabled(monkeypatch
 
     monkeypatch.setattr(run_daily_module, "load_config", lambda: config)
     monkeypatch.setattr(run_daily_module, "bootstrap_database", lambda _config: db)
-    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"reddit_post_id": "raw-1"}], raising=False)
-    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"reddit_post_id": "filtered-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"candidate_id": "raw-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"candidate_id": "filtered-1"}], raising=False)
     monkeypatch.setattr(run_daily_module, "store_candidates", lambda _c, _db: None, raising=False)
-    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"reddit_post_id": "scored-1", "keep": True}], raising=False)
-    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"reddit_post_id": "selected-1"}], "backups": []}, raising=False)
+    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"candidate_id": "scored-1", "keep": True}], raising=False)
+    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"candidate_id": "selected-1"}], "backups": []}, raising=False)
     monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _s, _config: outline, raising=False)
     monkeypatch.setattr(run_daily_module, "write_episode_script", lambda _o, _config: script, raising=False)
     monkeypatch.setattr(run_daily_module, "generate_episode_audio", lambda _s, _config: "/tmp/audio/episode.wav", raising=False)
@@ -518,11 +520,11 @@ def test_run_daily_pipeline_returns_success_when_success_notification_fails(monk
 
     monkeypatch.setattr(run_daily_module, "load_config", lambda: config)
     monkeypatch.setattr(run_daily_module, "bootstrap_database", lambda _config: db)
-    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"reddit_post_id": "raw-1"}], raising=False)
-    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"reddit_post_id": "filtered-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"candidate_id": "raw-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"candidate_id": "filtered-1"}], raising=False)
     monkeypatch.setattr(run_daily_module, "store_candidates", lambda _c, _db: None, raising=False)
-    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"reddit_post_id": "scored-1", "keep": True}], raising=False)
-    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"reddit_post_id": "selected-1"}], "backups": []}, raising=False)
+    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"candidate_id": "scored-1", "keep": True}], raising=False)
+    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"candidate_id": "selected-1"}], "backups": []}, raising=False)
     monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _s, _config: outline, raising=False)
     monkeypatch.setattr(run_daily_module, "write_episode_script", lambda _o, _config: script, raising=False)
     monkeypatch.setattr(run_daily_module, "generate_episode_audio", lambda _s, _config: "/tmp/audio/episode.wav", raising=False)
@@ -561,11 +563,11 @@ def test_run_daily_pipeline_includes_render_fallback_metadata_in_success_result(
     monkeypatch.setattr(run_daily_module, "load_config", lambda: config)
     monkeypatch.setattr(run_daily_module, "bootstrap_database", lambda _config: object())
     monkeypatch.setattr(run_daily_module, "RunLogRepository", lambda _db: type("RunLogs", (), {"log": lambda *args, **kwargs: None})(), raising=False)
-    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"reddit_post_id": "raw-1"}], raising=False)
-    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"reddit_post_id": "filtered-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"candidate_id": "raw-1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "filter_candidates", lambda _c, _config: [{"candidate_id": "filtered-1"}], raising=False)
     monkeypatch.setattr(run_daily_module, "store_candidates", lambda _c, _db: None, raising=False)
-    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"reddit_post_id": "scored-1", "keep": True}], raising=False)
-    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"reddit_post_id": "selected-1"}], "backups": []}, raising=False)
+    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"candidate_id": "scored-1", "keep": True}], raising=False)
+    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"candidate_id": "selected-1"}], "backups": []}, raising=False)
     monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _s, _config: outline, raising=False)
     monkeypatch.setattr(run_daily_module, "write_episode_script", lambda _o, _config: script, raising=False)
     monkeypatch.setattr(run_daily_module, "generate_episode_audio", lambda _s, _config: "/tmp/audio/episode.wav", raising=False)
@@ -719,7 +721,7 @@ def test_run_daily_pipeline_logs_final_publish_result(tmp_path, monkeypatch):
     monkeypatch.setattr(
         run_daily_module,
         "select_episode_items",
-        lambda _candidates, _config: {"primary": [{"reddit_post_id": "selected-1"}], "backups": []},
+        lambda _candidates, _config: {"primary": [{"candidate_id": "selected-1"}], "backups": []},
         raising=False,
     )
     monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _selected, _config: outline, raising=False)
@@ -797,7 +799,7 @@ def test_run_daily_pipeline_failure_logs_before_notifying(tmp_path, monkeypatch)
     monkeypatch.setattr(
         run_daily_module,
         "select_episode_items",
-        lambda _candidates, _config: {"primary": [{"reddit_post_id": "selected-1"}], "backups": []},
+        lambda _candidates, _config: {"primary": [{"candidate_id": "selected-1"}], "backups": []},
         raising=False,
     )
     monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _selected, _config: outline, raising=False)
@@ -915,8 +917,8 @@ def test_run_daily_pipeline_retries_on_transient_fetch_error(tmp_path, monkeypat
             raise ConnectionError("transient network error")
         return [
             {
-                "reddit_post_id": "recovered-1",
-                "subreddit": "AskReddit",
+                "candidate_id": "recovered-1",
+                "source_community": "AskReddit",
                 "title": "Recovered after retries",
                 "body": "This survived",
                 "url": "https://reddit.com/r/AskReddit/comments/recovered1",
@@ -934,7 +936,7 @@ def test_run_daily_pipeline_retries_on_transient_fetch_error(tmp_path, monkeypat
     monkeypatch.setattr(run_daily_module, "filter_candidates", lambda c, _config: c, raising=False)
     monkeypatch.setattr(run_daily_module, "store_candidates", lambda _c, _db: None, raising=False)
     monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [], raising=False)
-    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"reddit_post_id": "r1"}]}, raising=False)
+    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"candidate_id": "r1"}]}, raising=False)
     monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _s, _config: {"episode_date": "2026-04-03", "segments": []}, raising=False)
     monkeypatch.setattr(run_daily_module, "write_episode_script", lambda _o, _config: {"title": "T", "segments": []}, raising=False)
     monkeypatch.setattr(run_daily_module, "generate_episode_audio", lambda _s, _config: "/tmp/ep.wav", raising=False)
@@ -980,11 +982,11 @@ def test_run_daily_pipeline_retries_render_on_transient_error(tmp_path, monkeypa
         return "/tmp/renders/2026-04-03.mp4"
 
     monkeypatch.setattr(run_daily_module, "load_config", lambda: config, raising=False)
-    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"reddit_post_id": "r1"}], raising=False)
+    monkeypatch.setattr(run_daily_module, "fetch_candidates", lambda _config: [{"candidate_id": "r1"}], raising=False)
     monkeypatch.setattr(run_daily_module, "filter_candidates", lambda c, _config: c, raising=False)
     monkeypatch.setattr(run_daily_module, "store_candidates", lambda _c, _db: None, raising=False)
-    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"reddit_post_id": "r1", "keep": True}], raising=False)
-    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"reddit_post_id": "r1"}], "backups": []}, raising=False)
+    monkeypatch.setattr(run_daily_module, "score_candidates", lambda _c, _config: [{"candidate_id": "r1", "keep": True}], raising=False)
+    monkeypatch.setattr(run_daily_module, "select_episode_items", lambda _c, _config: {"primary": [{"candidate_id": "r1"}], "backups": []}, raising=False)
     monkeypatch.setattr(run_daily_module, "build_episode_outline", lambda _s, _config: {"episode_date": "2026-04-03", "segments": [], "title_angle": "T"}, raising=False)
     monkeypatch.setattr(run_daily_module, "write_episode_script", lambda _o, _config: {"title": "T", "segments": []}, raising=False)
     monkeypatch.setattr(run_daily_module, "generate_episode_audio", lambda _s, _config: "/tmp/audio.wav", raising=False)
@@ -1115,7 +1117,7 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
             "submissions": [
                 {
                     "id": "post-1",
-                    "subreddit": "tifu",
+                    "source_community": "tifu",
                     "title": "TIFU by accidentally starting a neighbourhood war",
                     "selftext": "So this happened last weekend when I meant to compliment my neighbour's lawn.",
                     "url": "https://reddit.com/r/tifu/comments/post1",
@@ -1131,7 +1133,7 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
                 },
                 {
                     "id": "post-2",
-                    "subreddit": "AmItheAsshole",
+                    "source_community": "AmItheAsshole",
                     "title": "AITA for refusing to share my wifi password?",
                     "selftext": "My neighbour keeps asking for my wifi password and I keep saying no.",
                     "url": "https://reddit.com/r/AmItheAsshole/comments/post2",
@@ -1146,7 +1148,7 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
                 },
                 {
                     "id": "post-3",
-                    "subreddit": "MaliciousCompliance",
+                    "source_community": "MaliciousCompliance",
                     "title": "Boss said no overtime, so I left a project unfinished",
                     "selftext": "My manager said we're not allowed to work overtime, so I left at 5pm exactly.",
                     "url": "https://reddit.com/r/MaliciousCompliance/comments/post3",
@@ -1244,13 +1246,13 @@ def test_run_daily_pipeline_executes_real_end_to_end_flow_with_io_stubs(tmp_path
 
     with sqlite3.connect(db_path) as conn:
         candidate_ids = conn.execute(
-            "SELECT reddit_post_id FROM reddit_candidates ORDER BY reddit_post_id"
+            "SELECT candidate_id FROM source_candidates ORDER BY candidate_id"
         ).fetchall()
         run_log = conn.execute(
             "SELECT run_date, stage, status, message, payload_json FROM run_logs ORDER BY id DESC LIMIT 1"
         ).fetchone()
 
-    assert candidate_ids == [("post-1",), ("post-2",), ("post-3",)]
+    assert candidate_ids == [("reddit:post-1",), ("reddit:post-2",), ("reddit:post-3",)]
     assert run_log[0] == "2026-04-03"
     assert run_log[1] == "publish"
     assert run_log[2] == "success"

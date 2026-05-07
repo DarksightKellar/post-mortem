@@ -44,7 +44,7 @@ def dedupe_candidates(candidates: Iterable[dict]) -> list[dict]:
     seen = set()
     output = []
     for candidate in candidates:
-        key = (candidate.get("subreddit"), (candidate.get("title") or "").strip().lower())
+        key = (candidate.get("source_community"), (candidate.get("title") or "").strip().lower())
         if key in seen:
             continue
         seen.add(key)

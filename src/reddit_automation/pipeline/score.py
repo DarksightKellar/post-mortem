@@ -15,7 +15,7 @@ def _build_scoring_payload(candidate: dict) -> dict:
     return {
         "title": candidate.get("title", ""),
         "body": candidate.get("body", ""),
-        "subreddit": candidate.get("subreddit", ""),
+        "source_community": candidate.get("source_community", ""),
         "score": candidate.get("score", 0),
         "comment_count": candidate.get("comment_count", 0),
         "comments": [

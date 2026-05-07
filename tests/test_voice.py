@@ -45,9 +45,9 @@ def test_generate_episode_audio_generates_and_stitches_single_segment_line(monke
         "segments": [
             {
                 "position": 1,
-                "reddit_post_id": "p1",
+                "candidate_id": "p1",
                 "source_title": "First story",
-                "subreddit": "AskReddit",
+                "source_community": "AskReddit",
                 "lines": [
                     {
                         "speaker": "host_1",
@@ -106,9 +106,9 @@ def test_generate_episode_audio_includes_cold_open_lines_before_segment_lines(mo
         "segments": [
             {
                 "position": 1,
-                "reddit_post_id": "p1",
+                "candidate_id": "p1",
                 "source_title": "First story",
-                "subreddit": "AskReddit",
+                "source_community": "AskReddit",
                 "lines": [
                     {
                         "speaker": "host_1",
@@ -168,9 +168,9 @@ def test_generate_episode_audio_appends_outro_lines_after_segment_lines(monkeypa
         "segments": [
             {
                 "position": 1,
-                "reddit_post_id": "p1",
+                "candidate_id": "p1",
                 "source_title": "First story",
-                "subreddit": "AskReddit",
+                "source_community": "AskReddit",
                 "lines": [
                     {
                         "speaker": "host_1",
@@ -236,9 +236,9 @@ def test_generate_episode_audio_creates_output_dir_before_stitching(monkeypatch,
         "segments": [
             {
                 "position": 1,
-                "reddit_post_id": "p1",
+                "candidate_id": "p1",
                 "source_title": "First story",
-                "subreddit": "AskReddit",
+                "source_community": "AskReddit",
                 "lines": [
                     {
                         "speaker": "host_1",

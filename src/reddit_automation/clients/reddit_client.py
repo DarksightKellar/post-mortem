@@ -24,9 +24,12 @@ class RedditClient:
         self._last_request_at: float | None = None
 
     def normalize_submission(self, submission: dict[str, Any], top_n_comments: int) -> dict[str, Any]:
+        source_id = str(submission["id"])
         return {
-            "reddit_post_id": submission["id"],
-            "subreddit": submission["subreddit"],
+            "candidate_id": f"reddit:{source_id}",
+            "source": "reddit",
+            "source_id": source_id,
+            "source_community": submission.get("subreddit") or submission.get("source_community"),
             "title": submission["title"],
             "body": submission.get("selftext", ""),
             "url": submission["url"],
@@ -34,7 +37,7 @@ class RedditClient:
             "created_utc": submission["created_utc"],
             "score": submission.get("score", 0),
             "comment_count": submission.get("num_comments", 0),
-            "raw_json": {"id": submission["id"]},
+            "raw_json": {"id": source_id, "source": "reddit"},
             "top_comments": [
                 {
                     "comment_id": comment["id"],

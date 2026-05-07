@@ -9,9 +9,11 @@ def test_upsert_candidates_inserts_one_candidate_row(tmp_path):
     schema_path = tmp_path / "schema.sql"
     schema_path.write_text(
         """
-        CREATE TABLE reddit_candidates (
-            reddit_post_id TEXT PRIMARY KEY,
-            subreddit TEXT NOT NULL,
+        CREATE TABLE source_candidates (
+            candidate_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            source_id TEXT NOT NULL,
+            source_community TEXT NOT NULL,
             title TEXT NOT NULL,
             body TEXT NOT NULL DEFAULT '',
             url TEXT NOT NULL,
@@ -24,7 +26,7 @@ def test_upsert_candidates_inserts_one_candidate_row(tmp_path):
         );
         CREATE TABLE candidate_comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            reddit_post_id TEXT NOT NULL,
+            candidate_id TEXT NOT NULL,
             comment_id TEXT NOT NULL UNIQUE,
             body TEXT NOT NULL,
             score INTEGER NOT NULL DEFAULT 0,
@@ -41,8 +43,8 @@ def test_upsert_candidates_inserts_one_candidate_row(tmp_path):
         }
     }
     candidate = {
-        "reddit_post_id": "abc123",
-        "subreddit": "AskReddit",
+        "candidate_id": "abc123",
+        "source_community": "AskReddit",
         "title": "Funniest thing that happened at work?",
         "body": "Someone microwaved fish and the office rioted.",
         "url": "https://reddit.com/r/AskReddit/comments/abc123",
@@ -63,14 +65,16 @@ def test_upsert_candidates_inserts_one_candidate_row(tmp_path):
     with sqlite3.connect(db_path) as conn:
         row = conn.execute(
             """
-            SELECT reddit_post_id, subreddit, title, body, url, author, created_utc, score, comment_count, raw_json
-            FROM reddit_candidates
-            WHERE reddit_post_id = ?
+            SELECT candidate_id, source, source_id, source_community, title, body, url, author, created_utc, score, comment_count, raw_json
+            FROM source_candidates
+            WHERE candidate_id = ?
             """,
             ("abc123",),
         ).fetchone()
 
     assert row == (
+        "abc123",
+        "reddit",
         "abc123",
         "AskReddit",
         "Funniest thing that happened at work?",
@@ -89,9 +93,11 @@ def test_replace_comments_inserts_comment_bundle_for_candidate(tmp_path):
     schema_path = tmp_path / "schema.sql"
     schema_path.write_text(
         """
-        CREATE TABLE reddit_candidates (
-            reddit_post_id TEXT PRIMARY KEY,
-            subreddit TEXT NOT NULL,
+        CREATE TABLE source_candidates (
+            candidate_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            source_id TEXT NOT NULL,
+            source_community TEXT NOT NULL,
             title TEXT NOT NULL,
             body TEXT NOT NULL DEFAULT '',
             url TEXT NOT NULL,
@@ -104,7 +110,7 @@ def test_replace_comments_inserts_comment_bundle_for_candidate(tmp_path):
         );
         CREATE TABLE candidate_comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            reddit_post_id TEXT NOT NULL,
+            candidate_id TEXT NOT NULL,
             comment_id TEXT NOT NULL UNIQUE,
             body TEXT NOT NULL,
             score INTEGER NOT NULL DEFAULT 0,
@@ -121,8 +127,8 @@ def test_replace_comments_inserts_comment_bundle_for_candidate(tmp_path):
         }
     }
     candidate = {
-        "reddit_post_id": "abc123",
-        "subreddit": "AskReddit",
+        "candidate_id": "abc123",
+        "source_community": "AskReddit",
         "title": "Funniest thing that happened at work?",
         "body": "Someone microwaved fish and the office rioted.",
         "url": "https://reddit.com/r/AskReddit/comments/abc123",
@@ -160,9 +166,9 @@ def test_replace_comments_inserts_comment_bundle_for_candidate(tmp_path):
     with sqlite3.connect(db_path) as conn:
         rows = conn.execute(
             """
-            SELECT reddit_post_id, comment_id, body, score, author, created_utc
+            SELECT candidate_id, comment_id, body, score, author, created_utc
             FROM candidate_comments
-            WHERE reddit_post_id = ?
+            WHERE candidate_id = ?
             ORDER BY comment_id
             """,
             ("abc123",),
@@ -193,9 +199,11 @@ def test_upsert_candidates_updates_existing_candidate_row(tmp_path):
     schema_path = tmp_path / "schema.sql"
     schema_path.write_text(
         """
-        CREATE TABLE reddit_candidates (
-            reddit_post_id TEXT PRIMARY KEY,
-            subreddit TEXT NOT NULL,
+        CREATE TABLE source_candidates (
+            candidate_id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            source_id TEXT NOT NULL,
+            source_community TEXT NOT NULL,
             title TEXT NOT NULL,
             body TEXT NOT NULL DEFAULT '',
             url TEXT NOT NULL,
@@ -208,7 +216,7 @@ def test_upsert_candidates_updates_existing_candidate_row(tmp_path):
         );
         CREATE TABLE candidate_comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            reddit_post_id TEXT NOT NULL,
+            candidate_id TEXT NOT NULL,
             comment_id TEXT NOT NULL UNIQUE,
             body TEXT NOT NULL,
             score INTEGER NOT NULL DEFAULT 0,
@@ -225,8 +233,8 @@ def test_upsert_candidates_updates_existing_candidate_row(tmp_path):
         }
     }
     original_candidate = {
-        "reddit_post_id": "abc123",
-        "subreddit": "AskReddit",
+        "candidate_id": "abc123",
+        "source_community": "AskReddit",
         "title": "Original title",
         "body": "Original body",
         "url": "https://reddit.com/r/AskReddit/comments/abc123",
@@ -237,8 +245,8 @@ def test_upsert_candidates_updates_existing_candidate_row(tmp_path):
         "raw_json": {"version": 1},
     }
     updated_candidate = {
-        "reddit_post_id": "abc123",
-        "subreddit": "AskReddit",
+        "candidate_id": "abc123",
+        "source_community": "AskReddit",
         "title": "Updated title",
         "body": "Updated body",
         "url": "https://reddit.com/r/AskReddit/comments/abc123",
@@ -260,14 +268,16 @@ def test_upsert_candidates_updates_existing_candidate_row(tmp_path):
     with sqlite3.connect(db_path) as conn:
         row = conn.execute(
             """
-            SELECT reddit_post_id, subreddit, title, body, url, author, created_utc, score, comment_count, raw_json
-            FROM reddit_candidates
-            WHERE reddit_post_id = ?
+            SELECT candidate_id, source, source_id, source_community, title, body, url, author, created_utc, score, comment_count, raw_json
+            FROM source_candidates
+            WHERE candidate_id = ?
             """,
             ("abc123",),
         ).fetchone()
 
     assert row == (
+        "abc123",
+        "reddit",
         "abc123",
         "AskReddit",
         "Updated title",

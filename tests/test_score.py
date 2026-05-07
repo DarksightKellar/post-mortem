@@ -58,7 +58,7 @@ def test_score_candidates_applies_weights_and_adds_overall_score():
     }
     candidates = [
         {
-            "reddit_post_id": "abc123",
+            "candidate_id": "abc123",
             "reaction_potential": 8,
             "laugh_factor": 7,
             "story_payoff": 6,
@@ -71,7 +71,7 @@ def test_score_candidates_applies_weights_and_adds_overall_score():
 
     assert scored_candidates == [
         {
-            "reddit_post_id": "abc123",
+            "candidate_id": "abc123",
             "reaction_potential": 8,
             "laugh_factor": 7,
             "story_payoff": 6,
@@ -102,7 +102,7 @@ def test_score_candidates_returns_candidates_sorted_by_overall_score_descending(
     }
     candidates = [
         {
-            "reddit_post_id": "lower",
+            "candidate_id": "lower",
             "reaction_potential": 6,
             "laugh_factor": 6,
             "story_payoff": 6,
@@ -110,7 +110,7 @@ def test_score_candidates_returns_candidates_sorted_by_overall_score_descending(
             "comment_bonus": 6,
         },
         {
-            "reddit_post_id": "higher",
+            "candidate_id": "higher",
             "reaction_potential": 9,
             "laugh_factor": 8,
             "story_payoff": 7,
@@ -121,7 +121,7 @@ def test_score_candidates_returns_candidates_sorted_by_overall_score_descending(
 
     scored_candidates = score_candidates(candidates, config)
 
-    assert [candidate["reddit_post_id"] for candidate in scored_candidates] == ["higher", "lower"]
+    assert [candidate["candidate_id"] for candidate in scored_candidates] == ["higher", "lower"]
 
 
 def test_score_candidates_scores_unscored_candidates_with_builtin_heuristics():
@@ -143,10 +143,10 @@ def test_score_candidates_scores_unscored_candidates_with_builtin_heuristics():
     }
     candidates = [
         {
-            "reddit_post_id": "strong",
+            "candidate_id": "strong",
             "title": "What is the funniest petty revenge you have ever seen?",
             "body": "My roommate kept stealing my food, so I relabeled everything with fake ingredient lists until he stopped.",
-            "subreddit": "pettyrevenge",
+            "source_community": "pettyrevenge",
             "score": 420,
             "comment_count": 87,
             "top_comments": [
@@ -183,10 +183,10 @@ def test_score_candidates_rejects_low_signal_unscored_candidates_with_builtin_he
     }
     candidates = [
         {
-            "reddit_post_id": "weak",
+            "candidate_id": "weak",
             "title": "Need help",
             "body": "",
-            "subreddit": "AskReddit",
+            "source_community": "AskReddit",
             "score": 1,
             "comment_count": 0,
             "top_comments": [],

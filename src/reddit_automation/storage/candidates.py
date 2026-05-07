@@ -5,6 +5,15 @@ import json
 from reddit_automation.storage.db import Database
 
 
+def _default_source_id(candidate: dict) -> str:
+    candidate_id = str(candidate["candidate_id"])
+    source = str(candidate.get("source") or "reddit")
+    prefix = f"{source}:"
+    if candidate_id.startswith(prefix):
+        return candidate_id[len(prefix) :]
+    return candidate_id
+
+
 class CandidateRepository:
     def __init__(self, db: Database):
         self.db = db
@@ -17,9 +26,11 @@ class CandidateRepository:
         with self.db.connect() as conn:
             conn.executemany(
                 """
-                INSERT INTO reddit_candidates (
-                    reddit_post_id,
-                    subreddit,
+                INSERT INTO source_candidates (
+                    candidate_id,
+                    source,
+                    source_id,
+                    source_community,
                     title,
                     body,
                     url,
@@ -28,9 +39,11 @@ class CandidateRepository:
                     score,
                     comment_count,
                     raw_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(reddit_post_id) DO UPDATE SET
-                    subreddit = excluded.subreddit,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(candidate_id) DO UPDATE SET
+                    source = excluded.source,
+                    source_id = excluded.source_id,
+                    source_community = excluded.source_community,
                     title = excluded.title,
                     body = excluded.body,
                     url = excluded.url,
@@ -43,8 +56,10 @@ class CandidateRepository:
                 """,
                 [
                     (
-                        row["reddit_post_id"],
-                        row["subreddit"],
+                        row["candidate_id"],
+                        row.get("source") or "reddit",
+                        row.get("source_id") or _default_source_id(row),
+                        row["source_community"],
                         row["title"],
                         row.get("body", ""),
                         row["url"],
@@ -61,18 +76,18 @@ class CandidateRepository:
 
         return len(rows)
 
-    def replace_comments(self, reddit_post_id: str, comments: list[dict]) -> int:
+    def replace_comments(self, candidate_id: str, comments: list[dict]) -> int:
         rows = list(comments)
 
         with self.db.connect() as conn:
             conn.execute(
-                "DELETE FROM candidate_comments WHERE reddit_post_id = ?",
-                (reddit_post_id,),
+                "DELETE FROM candidate_comments WHERE candidate_id = ?",
+                (candidate_id,),
             )
             conn.executemany(
                 """
                 INSERT INTO candidate_comments (
-                    reddit_post_id,
+                    candidate_id,
                     comment_id,
                     body,
                     score,
@@ -82,7 +97,7 @@ class CandidateRepository:
                 """,
                 [
                     (
-                        reddit_post_id,
+                        candidate_id,
                         row["comment_id"],
                         row["body"],
                         row.get("score", 0),

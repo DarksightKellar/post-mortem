@@ -12,7 +12,7 @@ from reddit_automation.clients.reddit_client import RedditClient
 def _submission(post_id="abc123", *, score=420, permalink="/r/AskReddit/comments/abc123/funniest_thing/"):
     return {
         "id": post_id,
-        "subreddit": "AskReddit",
+        "source_community": "AskReddit",
         "title": "What is the funniest thing that happened at work?",
         "selftext": "Someone microwaved fish and the office melted down.",
         "url": f"https://reddit.com/r/AskReddit/comments/{post_id}",
@@ -103,8 +103,10 @@ def test_normalize_submission_builds_candidate_dict_with_top_comments():
     candidate = client.normalize_submission(_submission(), top_n_comments=2)
 
     assert candidate == {
-        "reddit_post_id": "abc123",
-        "subreddit": "AskReddit",
+        "candidate_id": "reddit:abc123",
+        "source": "reddit",
+        "source_id": "abc123",
+        "source_community": "AskReddit",
         "title": "What is the funniest thing that happened at work?",
         "body": "Someone microwaved fish and the office melted down.",
         "url": "https://reddit.com/r/AskReddit/comments/abc123",
@@ -112,7 +114,7 @@ def test_normalize_submission_builds_candidate_dict_with_top_comments():
         "created_utc": 1712345678,
         "score": 420,
         "comment_count": 37,
-        "raw_json": {"id": "abc123"},
+        "raw_json": {"id": "abc123", "source": "reddit"},
         "top_comments": [
             {
                 "comment_id": "c1",
@@ -162,7 +164,7 @@ def test_fetch_returns_normalized_candidates_from_configured_raw_submissions(mon
 
     candidates = client.fetch()
 
-    assert candidates[0]["reddit_post_id"] == "abc123"
+    assert candidates[0]["candidate_id"] == "reddit:abc123"
     assert len(candidates[0]["top_comments"]) == 2
 
 
@@ -202,7 +204,7 @@ def test_fetches_configured_reddit_post_urls_without_oauth(monkeypatch):
     candidates = client.fetch()
 
     assert requested_urls == [f"{thread_url}.json?limit=2&raw_json=1"]
-    assert candidates[0]["reddit_post_id"] == "abc123"
+    assert candidates[0]["candidate_id"] == "reddit:abc123"
     assert candidates[0]["top_comments"] == [
         {
             "comment_id": "c1",
@@ -335,6 +337,6 @@ def test_live_fetch_gets_comments_only_for_top_budgeted_candidates_after_dedupin
 
     comment_urls = [url for url in requested_urls if "/comments/" in url]
     assert comment_urls == ["https://oauth.reddit.com/r/AskReddit/comments/high/high_score/.json?limit=2&raw_json=1"]
-    assert [candidate["reddit_post_id"] for candidate in candidates] == ["high", "low"]
+    assert [candidate["candidate_id"] for candidate in candidates] == ["reddit:high", "reddit:low"]
     assert len(candidates[0]["top_comments"]) == 2
     assert candidates[1]["top_comments"] == []

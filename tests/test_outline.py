@@ -4,12 +4,12 @@ from reddit_automation.pipeline.outline import build_episode_outline
 def test_build_episode_outline_returns_primary_items_as_ordered_segments():
     selected_items = {
         "primary": [
-            {"reddit_post_id": "p1", "title": "First story", "subreddit": "AskReddit"},
-            {"reddit_post_id": "p2", "title": "Second story", "subreddit": "tifu"},
-            {"reddit_post_id": "p3", "title": "Third story", "subreddit": "AmItheAsshole"},
+            {"candidate_id": "p1", "title": "First story", "source_community": "AskReddit"},
+            {"candidate_id": "p2", "title": "Second story", "source_community": "tifu"},
+            {"candidate_id": "p3", "title": "Third story", "source_community": "AmItheAsshole"},
         ],
         "backups": [
-            {"reddit_post_id": "b1", "title": "Backup story", "subreddit": "AskReddit"}
+            {"candidate_id": "b1", "title": "Backup story", "source_community": "AskReddit"}
         ],
     }
     config = {
@@ -22,9 +22,9 @@ def test_build_episode_outline_returns_primary_items_as_ordered_segments():
 
     assert [segment["position"] for segment in outline["segments"]] == [1, 2, 3]
     assert [segment["source"] for segment in outline["segments"]] == [
-        {"reddit_post_id": "p1", "title": "First story", "subreddit": "AskReddit"},
-        {"reddit_post_id": "p2", "title": "Second story", "subreddit": "tifu"},
-        {"reddit_post_id": "p3", "title": "Third story", "subreddit": "AmItheAsshole"},
+        {"candidate_id": "p1", "title": "First story", "source_community": "AskReddit"},
+        {"candidate_id": "p2", "title": "Second story", "source_community": "tifu"},
+        {"candidate_id": "p3", "title": "Third story", "source_community": "AmItheAsshole"},
     ]
 
 
@@ -32,9 +32,9 @@ def test_build_episode_outline_returns_primary_items_as_ordered_segments():
 def test_build_episode_outline_uses_episode_target_minutes_as_segment_budget():
     selected_items = {
         "primary": [
-            {"reddit_post_id": "p1", "title": "First story", "subreddit": "AskReddit"},
-            {"reddit_post_id": "p2", "title": "Second story", "subreddit": "tifu"},
-            {"reddit_post_id": "p3", "title": "Third story", "subreddit": "AmItheAsshole"},
+            {"candidate_id": "p1", "title": "First story", "source_community": "AskReddit"},
+            {"candidate_id": "p2", "title": "Second story", "source_community": "tifu"},
+            {"candidate_id": "p3", "title": "Third story", "source_community": "AmItheAsshole"},
         ],
         "backups": [],
     }
@@ -45,7 +45,7 @@ def test_build_episode_outline_uses_episode_target_minutes_as_segment_budget():
 
     outline = build_episode_outline(selected_items, config)
 
-    assert [segment["source"]["reddit_post_id"] for segment in outline["segments"]] == ["p1"]
+    assert [segment["source"]["candidate_id"] for segment in outline["segments"]] == ["p1"]
 
 
 
@@ -53,9 +53,9 @@ def test_build_episode_outline_adds_segment_visual_notes_from_story_context():
     selected_items = {
         "primary": [
             {
-                "reddit_post_id": "p1",
+                "candidate_id": "p1",
                 "title": "First story",
-                "subreddit": "AskReddit",
+                "source_community": "AskReddit",
                 "summary": "A lunch prank blew up the office.",
             },
         ],
@@ -79,14 +79,14 @@ def test_build_episode_outline_returns_selection_primary_items_in_order():
     selected_items = {
         "primary": [
             {
-                "reddit_post_id": "c1",
+                "candidate_id": "c1",
                 "title": "First story",
                 "author": "user1",
                 "url": "https://reddit.com/1",
                 "overall_score": 9.5,
             },
             {
-                "reddit_post_id": "c2",
+                "candidate_id": "c2",
                 "title": "Second story",
                 "author": "user2",
                 "url": "https://reddit.com/2",
@@ -95,7 +95,7 @@ def test_build_episode_outline_returns_selection_primary_items_in_order():
         ],
         "backups": [
             {
-                "reddit_post_id": "b1",
+                "candidate_id": "b1",
                 "title": "Backup story",
                 "author": "user3",
                 "url": "https://reddit.com/3",
@@ -115,14 +115,20 @@ def test_build_episode_outline_returns_selection_primary_items_in_order():
         "primary_items": [
             {
                 "position": 1,
-                "reddit_post_id": "c1",
+                "candidate_id": "c1",
+                "source": "reddit",
+                "source_id": "c1",
+                "source_community": None,
                 "title": "First story",
                 "author": "user1",
                 "url": "https://reddit.com/1",
             },
             {
                 "position": 2,
-                "reddit_post_id": "c2",
+                "candidate_id": "c2",
+                "source": "reddit",
+                "source_id": "c2",
+                "source_community": None,
                 "title": "Second story",
                 "author": "user2",
                 "url": "https://reddit.com/2",
@@ -135,8 +141,8 @@ def test_build_episode_outline_adds_title_angle_and_cold_open_from_selected_stor
     selected_items = {
         "primary": [
             {
-                "reddit_post_id": "abc123",
-                "subreddit": "AmItheAsshole",
+                "candidate_id": "abc123",
+                "source_community": "AmItheAsshole",
                 "title": "AITA for leaving my own birthday dinner?",
                 "summary": "OP walked out after family drama.",
                 "author": "user1",
@@ -171,8 +177,8 @@ def test_build_episode_outline_adds_outro_from_primary_and_backup_story():
     selected_items = {
         "primary": [
             {
-                "reddit_post_id": "abc123",
-                "subreddit": "AmItheAsshole",
+                "candidate_id": "abc123",
+                "source_community": "AmItheAsshole",
                 "title": "AITA for leaving my own birthday dinner?",
                 "summary": "OP walked out after family drama.",
                 "author": "user1",
@@ -181,8 +187,8 @@ def test_build_episode_outline_adds_outro_from_primary_and_backup_story():
         ],
         "backups": [
             {
-                "reddit_post_id": "backup456",
-                "subreddit": "tifu",
+                "candidate_id": "backup456",
+                "source_community": "tifu",
                 "title": "TIFU by sending a complaint to the wrong email.",
                 "summary": "A workplace complaint landed in the boss inbox.",
                 "author": "user2",

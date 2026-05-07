@@ -29,7 +29,7 @@ from reddit_automation.utils.paths import SCHEMA_SQL_PATH
 def _make_submission(reddit_id, subreddit, title, body, comments, created_utc=1000000):
     return {
         "id": reddit_id,
-        "subreddit": subreddit,
+        "source_community": subreddit,
         "title": title,
         "selftext": body,
         "url": f"https://reddit.com/r/{subreddit}/posts/{reddit_id}",
@@ -109,7 +109,7 @@ def test_full_pipeline_fetch_through_publish(tmp_path, monkeypatch):
     raw = fetch_candidates(config)
     assert len(raw) == 5
     for c in raw:
-        assert "reddit_post_id" in c
+        assert "candidate_id" in c
         assert "top_comments" in c
 
     # --- Stage 2: Filter ---

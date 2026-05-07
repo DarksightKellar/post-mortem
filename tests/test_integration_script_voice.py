@@ -29,14 +29,14 @@ def test_script_to_voice_integration_produced_audio_path(monkeypatch):
     selected_items = {
         "primary": [
             {
-                "reddit_post_id": "p1",
+                "candidate_id": "p1",
                 "title": "Story 1",
-                "subreddit": "AskReddit",
+                "source_community": "AskReddit",
             },
             {
-                "reddit_post_id": "p2",
+                "candidate_id": "p2",
                 "title": "Story 2",
-                "subreddit": "tifu",
+                "source_community": "tifu",
             },
         ],
         "backups": [],

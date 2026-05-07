@@ -18,9 +18,9 @@ from reddit_automation.pipeline.render import render_episode_video
 def _make_selection():
     return {
         "primary": [
-            {"reddit_post_id": "p1", "title": "TIFU by accidentally starting a neighbourhood war", "author": "u/test1", "url": "https://reddit.com/tifu/p1", "subreddit": "tifu"},
-            {"reddit_post_id": "p2", "title": "AITA for refusing to share my wifi password?", "author": "u/test2", "url": "https://reddit.com/aita/p2", "subreddit": "AmItheAsshole"},
-            {"reddit_post_id": "p3", "title": "Manager said no overtime, so I left mid-deadline", "author": "u/test3", "url": "https://reddit.com/mc/p3", "subreddit": "MaliciousCompliance"},
+            {"candidate_id": "p1", "title": "TIFU by accidentally starting a neighbourhood war", "author": "u/test1", "url": "https://reddit.com/tifu/p1", "source_community": "tifu"},
+            {"candidate_id": "p2", "title": "AITA for refusing to share my wifi password?", "author": "u/test2", "url": "https://reddit.com/aita/p2", "source_community": "AmItheAsshole"},
+            {"candidate_id": "p3", "title": "Manager said no overtime, so I left mid-deadline", "author": "u/test3", "url": "https://reddit.com/mc/p3", "source_community": "MaliciousCompliance"},
         ],
     }
 

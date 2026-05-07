@@ -53,6 +53,7 @@ def _runtime_defaults() -> dict[str, Any]:
         "sources": {
             "source_mode": "subreddits",
             "max_posts_per_subreddit_per_mode": 15,
+            "bluesky_reply_depth": 6,
         },
         "filters": {
             "exclude_categories": ["politics", "culture_war", "tragedy", "abuse", "death", "nsfw"],
@@ -263,17 +264,24 @@ def _validate_sources(sources: Any) -> None:
         raise ConfigError("'sources' must be a mapping")
     subs = sources.get("subreddits")
     post_urls = sources.get("reddit_post_urls")
+    bluesky_post_urls = sources.get("bluesky_post_urls")
     source_mode = sources.get("source_mode")
-    if subs is None and post_urls is None:
-        raise ConfigError("Missing required field: sources.subreddits or sources.reddit_post_urls")
-    if source_mode is not None and source_mode not in {"post_urls", "subreddits"}:
-        raise ConfigError("sources.source_mode must be 'post_urls' or 'subreddits'")
-    if subs is not None and post_urls is not None and source_mode is None:
-        raise ConfigError("sources.source_mode is required when both reddit_post_urls and subreddits are configured")
+    allowed_modes = {"post_urls", "subreddits", "bluesky"}
+    if subs is None and post_urls is None and bluesky_post_urls is None:
+        if source_mode == "bluesky":
+            raise ConfigError("sources.source_mode=bluesky requires sources.bluesky_post_urls")
+        raise ConfigError("Missing required field: sources.subreddits, sources.reddit_post_urls, or sources.bluesky_post_urls")
+    if source_mode is not None and source_mode not in allowed_modes:
+        raise ConfigError("sources.source_mode must be 'post_urls', 'subreddits', or 'bluesky'")
+    configured_source_count = sum(value is not None for value in (subs, post_urls, bluesky_post_urls))
+    if configured_source_count > 1 and source_mode is None:
+        raise ConfigError("sources.source_mode is required when multiple source lists are configured")
     if source_mode == "post_urls" and post_urls is None:
         raise ConfigError("sources.source_mode=post_urls requires sources.reddit_post_urls")
     if source_mode == "subreddits" and subs is None:
         raise ConfigError("sources.source_mode=subreddits requires sources.subreddits")
+    if source_mode == "bluesky" and bluesky_post_urls is None:
+        raise ConfigError("sources.source_mode=bluesky requires sources.bluesky_post_urls")
     if subs is not None:
         if not isinstance(subs, list):
             raise ConfigError("sources.subreddits must be a list")
@@ -286,6 +294,13 @@ def _validate_sources(sources: Any) -> None:
             raise ConfigError("sources.reddit_post_urls must not be empty")
         if not all(isinstance(url, str) and url.strip() for url in post_urls):
             raise ConfigError("sources.reddit_post_urls must contain non-empty strings")
+    if bluesky_post_urls is not None:
+        if not isinstance(bluesky_post_urls, list):
+            raise ConfigError("sources.bluesky_post_urls must be a list")
+        if len(bluesky_post_urls) == 0:
+            raise ConfigError("sources.bluesky_post_urls must not be empty")
+        if not all(isinstance(url, str) and url.strip() for url in bluesky_post_urls):
+            raise ConfigError("sources.bluesky_post_urls must contain non-empty strings")
 
 
 def _validate_scoring(scoring: Any) -> None:

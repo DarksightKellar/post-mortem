@@ -11,7 +11,7 @@ def store_candidates(candidates: list[dict], db: Database) -> dict:
 
     for candidate in candidates:
         comment_count += repo.replace_comments(
-            candidate["reddit_post_id"],
+            candidate["candidate_id"],
             candidate.get("top_comments", []),
         )
 

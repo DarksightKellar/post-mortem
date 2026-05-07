@@ -11,10 +11,10 @@ from reddit_automation.pipeline.score import score_candidates_with_llm
 
 def _make_candidate(post_id, title="Test title"):
     return {
-        "reddit_post_id": post_id,
+        "candidate_id": post_id,
         "title": title,
         "body": "Some body text here",
-        "subreddit": "tifu",
+        "source_community": "tifu",
         "top_comments": [
             {"comment_id": "c1", "body": "Comment one", "score": 10},
             {"comment_id": "c2", "body": "Comment two", "score": 5},
@@ -102,10 +102,10 @@ def test_score_candidates_with_llm_rejects_empty_body_and_comments(monkeypatch):
     }
 
     empty_candidate = {
-        "reddit_post_id": "p_empty",
+        "candidate_id": "p_empty",
         "title": "Title only",
         "body": "",
-        "subreddit": "AskReddit",
+        "source_community": "AskReddit",
         "top_comments": [],
     }
 

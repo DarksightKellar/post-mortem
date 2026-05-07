@@ -56,9 +56,9 @@ def test_build_visual_plan_appends_first_segment_scene_from_segment_visual_notes
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "First story",
-                    "subreddit": "AskReddit",
+                    "source_community": "AskReddit",
                 },
                 "visual_notes": ["Placeholder visual note for p1"],
             }
@@ -82,18 +82,18 @@ def test_build_visual_plan_returns_full_scene_sequence_with_all_segment_scenes_i
             {
                 "position": 1,
                 "source": {
-                    "reddit_post_id": "p1",
+                    "candidate_id": "p1",
                     "title": "First story",
-                    "subreddit": "AskReddit",
+                    "source_community": "AskReddit",
                 },
                 "visual_notes": ["Placeholder visual note for p1"],
             },
             {
                 "position": 2,
                 "source": {
-                    "reddit_post_id": "p2",
+                    "candidate_id": "p2",
                     "title": "Second story",
-                    "subreddit": "AskReddit",
+                    "source_community": "AskReddit",
                 },
                 "visual_notes": ["Placeholder visual note for p2"],
             },

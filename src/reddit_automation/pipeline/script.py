@@ -285,6 +285,16 @@ def _c4_airport_segment_lines(
     return lines
 
 
+def _source_label(source: dict) -> str:
+    community = _clean_text(source.get("source_community"))
+    source_name = _clean_text(source.get("source")) or ("reddit" if community else "source")
+    if source_name == "reddit":
+        return f"r/{community or 'reddit'}"
+    if source_name == "bluesky":
+        return f"Bluesky @{community or 'bluesky'}"
+    return community or source_name
+
+
 def _segment_lines(
     source: dict,
     host_1_key: str,
@@ -294,7 +304,7 @@ def _segment_lines(
     if _is_c4_airport_story(source):
         return _c4_airport_segment_lines(source, host_1_key, host_2_key, host_2_profile)
 
-    subreddit = _clean_text(source.get("subreddit", "reddit")) or "reddit"
+    community = _source_label(source)
     title = _clean_text(source.get("title", "this story")) or "this story"
     setup = _story_setup(source)
     has_body = bool(_clean_text(source.get("body")))
@@ -304,7 +314,7 @@ def _segment_lines(
         return [
             {
                 "speaker": host_1_key,
-                "text": f"Over in r/{subreddit}: {setup}",
+                "text": f"Over in {community}: {setup}",
             },
             {
                 "speaker": host_2_key,
@@ -315,7 +325,7 @@ def _segment_lines(
     lines = [
         {
             "speaker": host_1_key,
-            "text": f"Over in r/{subreddit}: {_as_sentence(title)}",
+            "text": f"Over in {community}: {_as_sentence(title)}",
         },
         {
             "speaker": host_2_key,
@@ -404,9 +414,9 @@ def write_episode_script(outline: dict, config: dict) -> dict:
         "segments": [
             {
                 "position": segment["position"],
-                "reddit_post_id": segment["source"]["reddit_post_id"],
+                "candidate_id": segment["source"]["candidate_id"],
                 "source_title": segment["source"]["title"],
-                "subreddit": segment["source"]["subreddit"],
+                "source_community": segment["source"]["source_community"],
                 "lines": _segment_lines(
                     segment["source"],
                     host_1_key,
