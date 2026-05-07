@@ -107,6 +107,12 @@ class TestValidateConfigSourcesSection:
         with pytest.raises(ConfigError, match="bluesky_post_urls"):
             validate_config(config)
 
+    def test_queue_source_mode_uses_database_inbox_without_static_source_urls(self):
+        config = _make_minimal()
+        config["sources"] = {"source_mode": "queue", "queue_limit": 10}
+
+        validate_config(config)
+
 class TestValidateConfigScoringSection:
 
     """Tests for the scoring section validation."""

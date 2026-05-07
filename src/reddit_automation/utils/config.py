@@ -266,13 +266,15 @@ def _validate_sources(sources: Any) -> None:
     post_urls = sources.get("reddit_post_urls")
     bluesky_post_urls = sources.get("bluesky_post_urls")
     source_mode = sources.get("source_mode")
-    allowed_modes = {"post_urls", "subreddits", "bluesky"}
+    allowed_modes = {"post_urls", "subreddits", "bluesky", "queue"}
     if subs is None and post_urls is None and bluesky_post_urls is None:
+        if source_mode == "queue":
+            return
         if source_mode == "bluesky":
             raise ConfigError("sources.source_mode=bluesky requires sources.bluesky_post_urls")
-        raise ConfigError("Missing required field: sources.subreddits, sources.reddit_post_urls, or sources.bluesky_post_urls")
+        raise ConfigError("Missing required field: sources.subreddits, sources.reddit_post_urls, sources.bluesky_post_urls, or sources.source_mode=queue")
     if source_mode is not None and source_mode not in allowed_modes:
-        raise ConfigError("sources.source_mode must be 'post_urls', 'subreddits', or 'bluesky'")
+        raise ConfigError("sources.source_mode must be 'post_urls', 'subreddits', 'bluesky', or 'queue'")
     configured_source_count = sum(value is not None for value in (subs, post_urls, bluesky_post_urls))
     if configured_source_count > 1 and source_mode is None:
         raise ConfigError("sources.source_mode is required when multiple source lists are configured")

@@ -1,9 +1,9 @@
 # Postmortem
 
-Postmortem turns Reddit threads into podcast-style video episodes.
+Postmortem turns source threads into podcast-style video episodes.
 
 Current real pipeline:
-- fetch specific pasted Reddit post URLs without OAuth, or bulk-fetch curated subreddits with OAuth/Data API credentials
+- ingest URLs from the SQLite source queue, pasted Reddit post URLs, pasted Bluesky post URLs, fixture data, or authenticated bulk Reddit subreddit fetch
 - filter and store survivors in SQLite
 - score candidates locally with deterministic heuristics
 - select episode items
@@ -39,19 +39,19 @@ sudo apt install python3-venv
 Canonical entrypoint:
 
 ```bash
-python -m main
+python -m postmortem
 ```
 
 Notes:
 - By default, `publishing.youtube_auto_publish` is `false`, so the pipeline can succeed locally without YouTube auth.
-- No-key Reddit MVP mode uses `sources.reddit_post_urls`; fixture-backed runs can still use `reddit_test_data.submissions` without network access.
+- No-key queue mode uses `sources.source_mode: queue` and reads pending URLs from the SQLite `source_queue` inbox; no-key Reddit URL mode can still use `sources.reddit_post_urls`; fixture-backed runs can still use `reddit_test_data.submissions` without network access.
 - Bulk subreddit Reddit fetch still requires OAuth credentials.
 - Render uses HyperFrames. The pipeline writes a deterministic HTML composition under `render_dir/.hyperframes/<episode>/`, runs `hyperframes lint`, `validate`, `inspect`, then renders the final MP4.
 
 ## Run the dashboard
 
 ```bash
-python -m reddit_automation.dashboard.server
+python -m postmortem.dashboard.server
 ```
 
 Dashboard:
@@ -67,6 +67,24 @@ pytest
 ```
 
 ## Required / optional setup
+
+### Source queue inbox
+
+For the reusable no-key operator flow, set `sources.source_mode: queue` and enqueue URLs:
+
+```bash
+python -m postmortem.sources enqueue https://bsky.app/profile/bsky.app/post/3lqv2pprabs2i
+python -m postmortem.sources list
+```
+
+The queue records each URL as:
+
+- `pending` before fetch
+- `processing` while claimed by a run
+- `done` with the produced `candidate_id`
+- `failed` with an error message and incremented attempt count
+
+Duplicate URLs are ignored without resetting completed work.
 
 ### No-key Reddit URL mode
 
@@ -137,7 +155,8 @@ Optional services:
 ## Current implementation truth
 
 Working now:
-- no-key pasted Reddit URL ingestion, authenticated bulk Reddit fetch, fixture override, 429 retry/backoff, pacing, and comment request budgeting
+- source queue inbox with pending/processing/done/failed state for Reddit and Bluesky URLs
+- no-key pasted Reddit URL ingestion, pasted Bluesky URL ingestion, authenticated bulk Reddit fetch, fixture override, 429 retry/backoff, pacing, and comment request budgeting
 - filter
 - SQLite storage
 - local scoring

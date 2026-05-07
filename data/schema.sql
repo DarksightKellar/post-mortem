@@ -26,6 +26,19 @@ CREATE TABLE IF NOT EXISTS source_candidates (
     UNIQUE(source, source_id)
 );
 
+CREATE TABLE IF NOT EXISTS source_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'done', 'failed')),
+    candidate_id TEXT,
+    error_message TEXT NOT NULL DEFAULT '',
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source, source_url)
+);
+
 CREATE TABLE IF NOT EXISTS candidate_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     candidate_id TEXT NOT NULL,
@@ -108,6 +121,9 @@ CREATE INDEX IF NOT EXISTS idx_candidates_source_community_created_utc
 
 CREATE INDEX IF NOT EXISTS idx_candidates_fetched_at
     ON source_candidates(fetched_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_source_queue_status_created
+    ON source_queue(status, created_at, id);
 
 CREATE INDEX IF NOT EXISTS idx_scores_overall_score
     ON candidate_scores(overall_score DESC);
